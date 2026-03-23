@@ -1,2 +1,13 @@
 # Robotica_PUCV
-Laboratorios, tareas y proyecto relacionados con la asignatura de robótica de la PUCV primer semestre 2026
+Aquí se encuentran los laboratorios, las tareas y el proyecto que están relacionados con la asignatura de robótica.
+
+**Asignatura**: Robótica y Sistemas Autónomos <br>
+**Semestre**: 2026-01 <br>
+**Código**: ICI-4150 <br>
+
+Grupo:
+* Ademir Muñoz
+* Joaquin
+* Matias
+* Fabrizzio
+* Vicente
