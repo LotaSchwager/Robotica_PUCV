@@ -41,3 +41,5 @@ Dentro de la carpeta ```\worlds``` existe un archivo de extensión wbt; ese es e
 el robot e-puck y esa es aquella que debe ser abierta en la opción ```Abrir mundo.....``` dentro de Webots. <br> 
 El controlador está dentro de la carpeta ```\controllers\Ruedas``` donde estará un archivo de Python que <br> 
 será aquel que se debe editar para realizar lo necesario para realizar el laboratorio.
+
+## Resultados
