@@ -88,7 +88,7 @@ class EpuckRobot:
         while self.step():
             # Condición de control durante el giro
             if self.proximity.is_obstacle_ahead(threshold=100.0):
-                print(f"🛑 ¡Obstáculo detectado en medio del giro! Deteniéndose...")
+                print(f"¡Obstáculo detectado, deteniéndose...")
                 self.stop()
                 return False
                 
@@ -98,7 +98,7 @@ class EpuckRobot:
             dist_travelled = (abs(curr_left - start_left) + abs(curr_right - start_right)) / 2.0
             
             if dist_travelled >= target_rads:
-                print(f"✅ Giro completado con éxito ({target_rads} pasos girados).")
+                print(f"Giro completado con éxito ({target_rads} pasos girados).")
                 self.stop()
                 return True
                 

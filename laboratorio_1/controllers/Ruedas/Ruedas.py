@@ -29,17 +29,15 @@ def main():
                     print("Todavía hay un obstáculo, buscando nueva dirección...")
         else:
             # Si completó la distancia sin detenerse por obstáculos, terminamos este loop
-            print("🚀 Avance completado exitosamente.")
+            print("Recorrido completado.")
             break
 
     # Ejemplo del ciruclo
-    print("Haciendo un círculo")
-    my_robot.move_circle(radius_steps=15)
+    # my_robot.move_circle(radius_steps=15)
     
 
     # Ejemplo de giro opuesto
-    print("Girando ruedas en direcciones opuestas")
-    my_robot.turn_steps(target_rads=10.0, direccion='derecha')
+    # my_robot.turn_steps(target_rads=10.0, direction='derecha')
 
     # Bucle que mantiene la sesión activa
     while my_robot.step():

@@ -4,8 +4,6 @@ class WheelController:
     def __init__(self, robot, timestep):
         self.left_motor = robot.getDevice("left wheel motor")
         self.right_motor = robot.getDevice("right wheel motor")
-        
-        # Para medir "pasos" obtenidos por los motores, requerimos los encoders o "sensores de posición"
         self.left_sensor = robot.getDevice("left wheel sensor")
         self.right_sensor = robot.getDevice("right wheel sensor")
         self.left_sensor.enable(timestep)
