@@ -7,7 +7,7 @@ Aquí se encuentran los laboratorios, las tareas y el proyecto que están relaci
 
 Grupo:
 * Ademir Muñoz
-* Joaquin
-* Matias
-* Fabrizzio
+* Joaquín Tapia 
+* Matías
+* Fabrizzio Mura
 * Vicente
