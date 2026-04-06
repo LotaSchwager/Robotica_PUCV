@@ -10,4 +10,4 @@ Grupo:
 * Joaquín Tapia 
 * Matías
 * Fabrizzio Mura
-* Vicente
+* Vicente Sepúlveda
