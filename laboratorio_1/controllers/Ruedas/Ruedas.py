@@ -1,55 +1,50 @@
 """Ruedas controller."""
 
-# You may need to import some classes of the controller module. Ex:
-#  from controller import Robot, Motor, DistanceSensor
-from controller import Robot, Motor
+from robot import EpuckRobot, RobotState
 
-def switcher(option):
-    match option:
-        # Línea rectal 
-        case 'Q1':
-            left_velocity = -0.5 * MAX_SPEED
-            right_velocity = 0.5 * MAX_SPEED
-            print("left_velocity: ", left_velocity)
-            print("right_velocity: ", right_velocity,"\n\n")
-            left_motor.setVelocity(left_velocity)
-            right_motor.setVelocity(right_velocity)
-            robot.step(1000)
-            left_motor.setVelocity(0)
-            right_motor.setVelocity(0)
-        # Girar en su eje    
-        case 'Q2':
-            left_velocity = -0.5 * MAX_SPEED
-            right_velocity = 0.5 * MAX_SPEED
-            print("left_velocity: ", left_velocity)
-            print("right_velocity: ", right_velocity, "\n\n")
-            left_motor.setVelocity(left_velocity)
-            right_motor.setVelocity(right_velocity)
-        # Girar hacia una dirección
-        case 'Q3':
-            left_velocity = 0.5 * MAX_SPEED
-            right_velocity = 0.25 * MAX_SPEED
-            print("left_velocity: ", left_velocity)
-            print("right_velocity: ", right_velocity, "\n\n")
-            left_motor.setVelocity(left_velocity)
-            right_motor.setVelocity(right_velocity)
-        # En caso de no calzar
-        case _:
-            print("Opción no válida\n\n")
+def main():
+    my_robot = EpuckRobot()
+
+    print("=== Iniciando control por odometría/distancia con Estados ===")
+    # El robot monitorea obstáculos internamente y cambia a STOPPED si encuentra uno
+    distancia_total = 100.0
+    
+    print(f"Intentando avanzar {distancia_total} pasos...")
+    while True:
+        completado = my_robot.move_steps(target_rads=distancia_total, speed_factor=0.6)
+        
+        if my_robot.state == RobotState.STOPPED and not completado:
+            print("Robot parado por obstáculo. Cambiando el angulo de giro para intentar evitarlo.")
+            
+            # Girar en su propio eje con un ángulo random acotado según los sensores frontales
+            # Repetir giros hasta que el camino esté despejado
+            while True:
+                my_robot.rotate_random()
+                
+                # Una vez terminado el giro, verificamos si hay obstáculos
+                if not my_robot.proximity.is_obstacle_ahead(threshold=100.0):
+                    print("✨ Camino despejado, retomando marcha.")
+                    break
+                else:
+                    print("Todavía hay un obstáculo, buscando nueva dirección...")
+        else:
+            # Si completó la distancia sin detenerse por obstáculos, terminamos este loop
+            print("🚀 Avance completado exitosamente.")
+            break
+
+    # Ejemplo del ciruclo
+    print("Haciendo un círculo")
+    my_robot.move_circle(radius_steps=15)
+    
+
+    # Ejemplo de giro opuesto
+    print("Girando ruedas en direcciones opuestas")
+    my_robot.turn_steps(target_rads=10.0, direccion='derecha')
+
+    # Bucle que mantiene la sesión activa
+    while my_robot.step():
+        pass
 
 
-MAX_SPEED = 6.25
-robot = Robot()
-timestep = int(robot.getBasicTimeStep())
-left_motor = robot.getDevice("left wheel motor")
-right_motor = robot.getDevice("right wheel motor")
-left_motor.setPosition(float('inf'))
-right_motor.setPosition(float('inf'))
-left_motor.setVelocity(0.0)
-right_motor.setVelocity(0.0)
-
-# Main loop:
-# - perform simulation steps until Webots is stopping the controller
-while robot.step(timestep) != -1:
-    switcher('Q1')
-    pass
+if __name__ == "__main__":
+    main()
