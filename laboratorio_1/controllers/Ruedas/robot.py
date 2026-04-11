@@ -66,10 +66,10 @@ class EpuckRobot:
         self.state = RobotState.STOPPED
         print(f"-> [ESTADO: {self.state.value}] Robot detenido.")
 
-    def turn_steps(self, target_rads, direction='izquierda', speed_factor=0.5):
+    def turn_steps(self, target_rads, direction='izquierda', speed_factor=0.5, check_obstacle=True):
         """
         Gira en su propio eje cierta cantidad de pasos (radianes). 
-        También chequea obstáculos en pleno giro.
+        También chequea obstáculos en pleno giro, a menos que check_obstacle sea False.
         """
         self.state = RobotState.OWN_TURN
         start_left, start_right = self.wheels.get_positions()
@@ -87,7 +87,7 @@ class EpuckRobot:
             
         while self.step():
             # Condición de control durante el giro
-            if self.proximity.is_obstacle_ahead(threshold=100.0):
+            if check_obstacle and self.proximity.is_obstacle_ahead(threshold=100.0):
                 print(f"¡Obstáculo detectado, deteniéndose...")
                 self.stop()
                 return False
@@ -120,38 +120,30 @@ class EpuckRobot:
         return True
 
     def rotate_random(self):
-        """Gira el robot con un ángulo aleatorio acotado por p0/p7."""
+        """Gira el robot para evadir un obstáculo, asegurando darle la espalda (quedar cara a cara a lo libre)."""
         values = self.proximity.get_values()
-        p0_active = values[0] > 100.0
-        p7_active = values[7] > 100.0
-
-        if p7_active and not p0_active:
-            # p7 ve obstáculo a la izquierda, así que conviene girar a la derecha.
-            direction = 1
-            angle = random.uniform(math.pi * 0.5, math.pi * 0.75)
-        elif p0_active and not p7_active:
-            # p0 ve obstáculo a la derecha, así que conviene girar a la izquierda.
-            direction = -1
-            angle = random.uniform(math.pi * 0.5, math.pi * 0.75)
-        elif p0_active and p7_active:
-            # Si ambos ven obstáculo, usamos el sensor más fuerte para decidir el lado.
-            if values[7] > values[0]:
-                direction = 1
-            elif values[0] > values[7]:
-                direction = -1
-            else:
-                direction = random.choice([-1, 1])
-            angle = random.uniform(math.pi * 0.75, math.pi)
+        
+        # Leemos los sensores para saber qué lado está más cerca de la pared.
+        # Sensores izquierdos: ps7, ps6, ps5. Sensores derechos: ps0, ps1, ps2.
+        left_val = values[7] + values[6] + values[5]
+        right_val = values[0] + values[1] + values[2]
+        
+        # Para evitar enfrascarnos en esquinas, giramos hacia el lado más despejado (menor medición)
+        if left_val > right_val:
+            direction = 1  # Girar a la derecha
         else:
-            # Si cualquiera de los dos sensores no ven obstaculo, girar en dirección aleatoria moderada.
-            direction = random.choice([-1, 1])
-            angle = random.uniform(math.pi * 0.4, math.pi * 0.65)
-
-        wheel_turn_rads = angle * 2.5 # Valor de calibración ficticio
+            direction = -1 # Girar a la izquierda
+            
+        # Le damos un buen giro para darle la espalda al obstáculo de manera segura (ej: ~135 a 180 grados).
+        angle = random.uniform(math.pi * 0.75, math.pi)
+        
+        # Asignamos la equivalencia del radian a movimiento de rueda del e-puck
+        wheel_turn_rads = angle * 2.5
         direction_label = 'derecha' if direction == 1 else 'izquierda'
 
         print(
-            f"-> Rotando ángulo acotado: {angle:.2f} rad, dirección: {direction_label} "
-            f"(p0={values[0]:.2f}, p7={values[7]:.2f})"
+            f"-> Esquivando (esquina/pared): Rotando ~{angle*180/math.pi:.0f}° a la {direction_label} "
+            f"(Izq: {left_val:.1f}, Der: {right_val:.1f})"
         )
-        return self.turn_steps(wheel_turn_rads, direction)
+        # Importante: check_obstacle=False para que no cancele este giro evasivo mientras sigue cerca de la pared.
+        return self.turn_steps(wheel_turn_rads, direction, check_obstacle=False)
