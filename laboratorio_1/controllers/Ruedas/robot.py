@@ -168,12 +168,49 @@ class EpuckRobot:
             f"-> Esquivando (esquina/pared): Rotando ~{angle*180/math.pi:.0f}° a la {direction_label} "
             f"(Izq: {left_val:.1f}, Der: {right_val:.1f})"
         )
-<<<<<<< HEAD
-        return self.turn_steps(wheel_turn_rads, direction)
+        # Importante: check_obstacle=False para que no cancele este giro evasivo mientras sigue cerca de la pared.
+        return self.turn_steps(wheel_turn_rads, direction, check_obstacle=False)
+
+    def rotar_tiempo(self, time_ms, speed_factor=0.33):
+        pass
+
+    def movimiento_cuadrado(self):
+        """
+        Movimiento en cuadrado usando tiempo:
+        avanza 3 segundos, gira 90°, repetir 4 veces.
+        """
+        print("-> Iniciando movimiento en cuadrado (basado en tiempo)")
+    
+        tiempo_avance = 3000  # ms = 3 segundos
+        tiempo_giro = 1000    # ms aproximado para 90° (AJUSTABLE)
+    
+        for i in range(4):
+            print(f"Lado {i+1} del cuadrado")
+    
+            # ===== AVANZAR =====
+            self.wheels.forward(0.5)
+            tiempo = 0
+    
+            while self.step() and tiempo < tiempo_avance:
+                if self.proximity.is_obstacle_ahead(threshold=100.0):
+                    print("Obstáculo detectado durante avance")
+                    self.stop()
+                    return False
+                tiempo += self.timestep
+    
+            self.stop()
+    
+            # ===== GIRAR 90° =====
+            self.wheels.turn_own_axis_left(0.33)
+            tiempo = 0
+    
+            while self.step() and tiempo < tiempo_giro:
+                tiempo += self.timestep
+    
+            self.stop()
+    
+        print("-> Cuadrado completado")
+        return True
 
     def get_position(self):
         return self.gps.getValues() # Devuelve [X, Y, Z]
-=======
-        # Importante: check_obstacle=False para que no cancele este giro evasivo mientras sigue cerca de la pared.
-        return self.turn_steps(wheel_turn_rads, direction, check_obstacle=False)
->>>>>>> 0ab1320990058c497672d179f14026e5add569db
