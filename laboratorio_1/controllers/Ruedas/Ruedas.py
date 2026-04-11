@@ -4,7 +4,7 @@ from robot import EpuckRobot, RobotState
 
 def main():
     my_robot = EpuckRobot()
-
+    
     print("=== Iniciando control por odometría/distancia con Estados ===")
     # El robot monitorea obstáculos internamente y cambia a STOPPED si encuentra uno
     distancia_total = 100.0
@@ -18,7 +18,16 @@ def main():
             
             # Girar en su propio eje con un ángulo random acotado según los sensores frontales
             # Repetir giros hasta que el camino esté despejado
+            intentos_escape = 0
             while True:
+                intentos_escape += 1
+                
+                # Si hemos intentado girar 3 veces sin éxito, es probable que estemos en una esquina
+                if intentos_escape > 3:
+                    print("¡Atascado en esquina detectado! Retrocediendo para ganar espacio...")
+                    my_robot.backward_steps(target_rads=5.0, speed_factor=0.6)
+                    intentos_escape = 0  # Reiniciamos el contador tras retroceder
+                
                 my_robot.rotate_random()
                 
                 # Una vez terminado el giro, verificamos si hay obstáculos

@@ -42,7 +42,7 @@ class EpuckRobot:
         
         while self.step():
             # Condición de control: ¿Hay un obstáculo interrumpiendo el progreso?
-            if self.proximity.is_obstacle_ahead(threshold=100.0):
+            if self.proximity.is_obstacle_ahead(threshold=90.0):
                 print(f"¡Obstáculo, deteniéndose...")
                 self.stop()
                 return False  # Indica que no completó toda la distancia
@@ -60,6 +60,29 @@ class EpuckRobot:
                 
         return False
     
+    def backward_steps(self, target_rads, speed_factor=0.5):
+        """
+        Ordena mover el robot en línea recta hacia atrás por 'target_rads' pasos, ´para salir del bucle.
+        """
+        self.state = RobotState.RUNNING
+        start_left, start_right = self.wheels.get_positions()
+        
+        print(f"-> [ESTADO: {self.state.value}] Instrucción recibida: retroceder por {target_rads} pasos.")
+        self.wheels.backward(speed_factor)
+        
+        while self.step():
+            curr_left, curr_right = self.wheels.get_positions()
+            
+            # Promediamos la distancia recorrida de ambas ruedas
+            dist_travelled = (abs(curr_left - start_left) + abs(curr_right - start_right)) / 2.0
+            
+            if dist_travelled >= target_rads:
+                print(f"Retroceso completado ({target_rads} pasos).")
+                self.stop()
+                return True
+                
+        return False
+
     def stop(self):
         """Detiene el robot y cambia su estado a STOPPED."""
         self.wheels.stop()
@@ -155,3 +178,6 @@ class EpuckRobot:
             f"(p0={values[0]:.2f}, p7={values[7]:.2f})"
         )
         return self.turn_steps(wheel_turn_rads, direction)
+
+    def get_position(self):
+        return self.gps.getValues() # Devuelve [X, Y, Z]
