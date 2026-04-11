@@ -2,15 +2,6 @@
 __pycache__/
 *.py[cod]
 
-# Virtual environments
-.venv/
-venv/
-env/
-
 # Editor/OS temporary files
 .DS_Store
 Thumbs.db
-
-# Webots project metadata (auto-generated local state)
-worlds/.*.wbproj
-.robos.wbproj
