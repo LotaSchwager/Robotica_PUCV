@@ -87,8 +87,7 @@ Se ha logrado resolver satisfactoriamente la actividad, respondiendo a cada una 
 
 Pudimos observar por separado las rutas del robot requeridas para completar la actividad, comprendiendo como funcionan las físicas y cámara del mundo, y además que sensores y actuadores tuvimos a disposición en el robot epuck para poder trabajar luego con estos (donde fue verdaderamente importante reconocer los nombres de las ruedas del robot y la cantidad y ubicaciones de cada uno de los sensores de proximidad).
 
-
-
+[Ver video de demostración en Google Drive](https://drive.google.com/file/d/116wOscYLrcVTE-72jvfchIpXETZmdEV7/view)
 
 ## Preguntas
 
@@ -110,3 +109,4 @@ Respuesta: El robot comienza a rotar en el mismo lugar, esto en caso que [Vr != 
 ### 4: ¿Qué tipo de movimiento permite dibujar un círculo?
 
 Respuesta: El robot necesita que las ruedas giren al mismo sentido pero con velocidades distintas (Vr != Vl), con esto el robot puede tener una trayectoría curva.
+
