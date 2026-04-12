@@ -81,9 +81,14 @@ Esta clase se encarga del manejo de los sensores de proximidad del robot:
 - `front_obstacle_hits`: Devuelve qué sensores frontales detectan obstáculo.
 - `front_obstacle_count`: Devuelve cuántos sensores frontales están activos.
 
-## Resultados
+# Resultados obtenidos:
 
-nashe
+Se ha logrado resolver satisfactoriamente la actividad, respondiendo a cada una de las preguntas y diseñando una serie de clases que organizaron de mejor manera el código para poder trabajar en equipo de manera conjunta y teniendo todos a disposición las mismas funciones para trabajar y trazar los movimientos o rutas del robot.
+
+Pudimos observar por separado las rutas del robot requeridas para completar la actividad, comprendiendo como funcionan las físicas y cámara del mundo, y además que sensores y actuadores tuvimos a disposición en el robot epuck para poder trabajar luego con estos (donde fue verdaderamente importante reconocer los nombres de las ruedas del robot y la cantidad y ubicaciones de cada uno de los sensores de proximidad).
+
+
+
 
 ## Preguntas
 
@@ -91,11 +96,11 @@ Respuestas a las preguntas del pdf.
 
 ### 1: ¿Qué ocurre cuando ambas ruedas tienen la misma velocidad?
 
-Respuesta: El robot continua en linea recta si es que no se ha definido una ruta distinta.
+Respuesta: El robot continua en linea recta si es que no se ha definido una ruta distinta (Vr = Vi).
 
 ### 2: ¿Cómo cambia la trayectoria cuando las velocidades son diferentes?
 
-Respuesta: El robot rota en la misma direccion que la rueda con menor velocidad (ej: si Vi (velocidad de la rueda izquierda) es menor, girará hacia la izquierda), pero girará en un circulo si la Vi se mantiene constante en el tiempo.
+Respuesta: El robot rota en la misma direccion que la rueda con menor velocidad (ej: si Vi (velocidad de la rueda izquierda) es menor, girará hacia la izquierda), pero girará en un circulo si la Vi se mantiene constante en el tiempo (Vr != Vi).
 
 ### 3: ¿Qué ocurre cuando una rueda gira en sentido opuesto a la otra?
 
