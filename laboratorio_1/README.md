@@ -99,8 +99,9 @@ respuesta
 
 ### 3: ¿Qué ocurre cuando una rueda gira en sentido opuesto a la otra?
 
-respuesta
+# respuesta:
+
 
 ### 4: ¿Qué tipo de movimiento permite dibujar un círculo?
 
-respuesra
+respuesta
