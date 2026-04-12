@@ -104,9 +104,9 @@ Respuesta: El robot rota en la misma direccion que la rueda con menor velocidad 
 
 ### 3: ¿Qué ocurre cuando una rueda gira en sentido opuesto a la otra?
 
-Respuesta:
+Respuesta: El robot comienza a rotar en el mismo lugar, esto en caso que [Vr != -Vl] En caso que las velocidades sean distintas y en sentidos opuestos, el robot comienza a desplazarse a favor de la rueda de mayor velocidad pero rotando en dirección de la rueda de menor velocidad.
 
 
 ### 4: ¿Qué tipo de movimiento permite dibujar un círculo?
 
-Respuesta:
+Respuesta: El robot necesita que las ruedas giren al mismo sentido pero con velocidades distintas (Vr != Vl), con esto el robot puede tener una trayectoría curva.
