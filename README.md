@@ -8,6 +8,6 @@ Aquí se encuentran los laboratorios, las tareas y el proyecto que están relaci
 Grupo:
 * Ademir Muñoz
 * Joaquín Tapia 
-* Matías
+* Matías Romero
 * Fabrizzio Mura
 * Vicente Sepúlveda
