@@ -91,17 +91,17 @@ Respuestas a las preguntas del pdf.
 
 ### 1: ¿Qué ocurre cuando ambas ruedas tienen la misma velocidad?
 
-respuesta: El robot continua en linea recta si es que no se ha definido una ruta distinta.
+Respuesta: El robot continua en linea recta si es que no se ha definido una ruta distinta.
 
 ### 2: ¿Cómo cambia la trayectoria cuando las velocidades son diferentes?
 
-respuesta: el robot rota en la misma direccion que la rueda con menor velocidad (ej: si Vi (velocidad de la rueda izquierda) es menor, girará hacia la izquierda), pero girará en un circulo si la Vi se mantiene constante en el tiempo.
+Respuesta: El robot rota en la misma direccion que la rueda con menor velocidad (ej: si Vi (velocidad de la rueda izquierda) es menor, girará hacia la izquierda), pero girará en un circulo si la Vi se mantiene constante en el tiempo.
 
 ### 3: ¿Qué ocurre cuando una rueda gira en sentido opuesto a la otra?
 
-respuesta:
+Respuesta:
 
 
 ### 4: ¿Qué tipo de movimiento permite dibujar un círculo?
 
-respuesta
+Respuesta:
