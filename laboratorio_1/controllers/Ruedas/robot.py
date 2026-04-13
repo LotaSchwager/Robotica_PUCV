@@ -50,7 +50,7 @@ class EpuckRobot:
             # ¿Cuántos pasos se ha dado?
             curr_left, curr_right = self.wheels.get_positions()
             
-            # Promediamos la distancia recorrida de ambas ruedas (valor absoluto)
+            # Promediamos la distancia recorrida de ambas ruedas
             dist_travelled = (abs(curr_left - start_left) + abs(curr_right - start_right)) / 2.0
             
             if dist_travelled >= target_rads:
@@ -131,7 +131,7 @@ class EpuckRobot:
         """Realiza un movimiento circular."""
         self.state = RobotState.CIRCLE
         print(f"-> [ESTADO: {self.state.value}] Realizando círculo.")
-        self.wheels.curve_right(speed_factor) # Ajustable según el radio deseado
+        self.wheels.curve_right(speed_factor)
         # Simplemente corre por un tiempo o distancia fija
         count = 0
         while self.step() and count < radius_steps * 100:
@@ -146,18 +146,17 @@ class EpuckRobot:
         """Gira el robot para evadir un obstáculo, asegurando darle la espalda (quedar cara a cara a lo libre)."""
         values = self.proximity.get_values()
         
-        # Leemos los sensores para saber qué lado está más cerca de la pared.
-        # Sensores izquierdos: ps7, ps6, ps5. Sensores derechos: ps0, ps1, ps2.
-        left_val = values[7] + values[6] + values[5]
-        right_val = values[0] + values[1] + values[2]
+        # Sensor izquierdo: ps7 Sensor derecho: ps0.
+        left_val = values[7]
+        right_val = values[0]
         
-        # Para evitar enfrascarnos en esquinas, giramos hacia el lado más despejado (menor medición)
+        # giramos hacia el lado más con menor lectura
         if left_val > right_val:
             direction = 1  # Girar a la derecha
         else:
             direction = -1 # Girar a la izquierda
             
-        # Le damos un buen giro para darle la espalda al obstáculo de manera segura (ej: ~135 a 180 grados).
+        # Le damos un giro a la espalda del robot
         angle = random.uniform(math.pi * 0.75, math.pi)
         
         # Asignamos la equivalencia del radian a movimiento de rueda del e-puck
@@ -168,7 +167,7 @@ class EpuckRobot:
             f"-> Esquivando (esquina/pared): Rotando ~{angle*180/math.pi:.0f}° a la {direction_label} "
             f"(Izq: {left_val:.1f}, Der: {right_val:.1f})"
         )
-        # Importante: check_obstacle=False para que no cancele este giro evasivo mientras sigue cerca de la pared.
+        # check_obstacle=False para que no cancele este giro evasivo mientras sigue cerca de la pared.
         return self.turn_steps(wheel_turn_rads, direction, check_obstacle=False)
 
     def rotar_tiempo(self, time_ms, speed_factor=0.33):
@@ -182,7 +181,7 @@ class EpuckRobot:
         print("-> Iniciando movimiento en cuadrado (basado en tiempo)")
     
         tiempo_avance = 3000  # ms = 3 segundos
-        tiempo_giro = 1000    # ms aproximado para 90° (AJUSTABLE)
+        tiempo_giro = 1000    # ms aproximado para 90°
     
         for i in range(4):
             print(f"Lado {i+1} del cuadrado")

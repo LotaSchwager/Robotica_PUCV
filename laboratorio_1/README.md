@@ -71,6 +71,7 @@ Esta clase se encarga del manejo directo de los motores correspondientes a ambas
 - `stop`: Detiene completamente el movimiento de los motores de manera predeterminada.
 - `turn_own_axis_left` y `turn_own_axis_right`: Fijan la velocidad de las ruedas en signos opuestos para que el robot pueda girar sobre su propio eje.
 - `curve_left` y `curve_right`: Asignan distintas escalas de rotación a las ruedas para generar una trayectoria curva hacia un lado u otro.
+- `movimiento_cuadrado`: Hace que el robot realice un movimiento coordinado formando un cuadrado.
 
 **Clase `ProximityController` (`laboratorio_1/controllers/Ruedas/proximity.py`)**
 Esta clase se encarga del manejo de los sensores de proximidad del robot:
