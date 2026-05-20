@@ -1,0 +1,285 @@
+#VRML_SIM R2025a utf8
+
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackground.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackgroundLight.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/floors/protos/RectangleArena.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/robots/gctronic/e-puck/protos/E-puck.proto"
+
+WorldInfo {
+}
+Viewpoint {
+  orientation 0.015414923172640664 0.9998126101441411 0.011710027341598834 1.5311483186979953
+  position -0.18548712956195573 0.03991252142015311 2.0322886352792957
+}
+TexturedBackground {
+}
+TexturedBackgroundLight {
+}
+RectangleArena {
+}
+Pose {
+  translation -0.38 0 0.0005
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0 0.75 0
+        roughness 1
+      }
+      geometry Box {
+        size 0.12 0.12 0.001
+      }
+    }
+  ]
+}
+Pose {
+  translation 0.42 0.4 0.0005
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.8 0 0
+        roughness 1
+      }
+      geometry Box {
+        size 0.12 0.12 0.001
+      }
+    }
+  ]
+}
+Solid {
+  translation -0.145 -0.14 0.025
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+      }
+      geometry Box {
+        size 0.61 0.02 0.05
+      }
+    }
+  ]
+  name "wall_main_bottom"
+  boundingObject Box {
+    size 0.61 0.02 0.05
+  }
+}
+Solid {
+  translation 0.2 0 0.025
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+      }
+      geometry Box {
+        size 0.02 0.32 0.05
+      }
+    }
+  ]
+  name "wall_dead_end_1"
+  boundingObject Box {
+    size 0.02 0.32 0.05
+  }
+}
+Solid {
+  translation 0.06 0.28 0.025
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+      }
+      geometry Box {
+        size 0.02 0.28 0.05
+      }
+    }
+  ]
+  name "wall_north_west"
+  boundingObject Box {
+    size 0.02 0.28 0.05
+  }
+}
+Solid {
+  translation -0.07 0.15 0.025
+  rotation 0 0 1 1.5708
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+      }
+      geometry Box {
+        size 0.02 0.28 0.05
+      }
+    }
+  ]
+  name "wall_north_west(1)"
+  boundingObject Box {
+    size 0.02 0.28 0.05
+  }
+}
+Solid {
+  translation -0.35 0.15 0.025
+  rotation 0 0 1 1.5708
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+      }
+      geometry Box {
+        size 0.02 0.28 0.05
+      }
+    }
+  ]
+  name "wall_north_west(2)"
+  boundingObject Box {
+    size 0.02 0.28 0.05
+  }
+}
+Solid {
+  translation 0.34 0.22 0.025
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+      }
+      geometry Box {
+        size 0.02 0.16 0.05
+      }
+    }
+  ]
+  name "wall_north_east"
+  boundingObject Box {
+    size 0.02 0.16 0.05
+  }
+}
+Solid {
+  translation 0.16 0.42 0.025
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+      }
+      geometry Box {
+        size 0.3 0.02 0.05
+      }
+    }
+  ]
+  name "wall_north_end"
+  boundingObject Box {
+    size 0.3 0.02 0.05
+  }
+}
+Solid {
+  translation 0.06 -0.18 0.025
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+      }
+      geometry Box {
+        size 0.02 0.08 0.05
+      }
+    }
+  ]
+  name "wall_south_west"
+  boundingObject Box {
+    size 0.02 0.08 0.05
+  }
+}
+Solid {
+  translation 0.34 -0.18 0.025
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+      }
+      geometry Box {
+        size 0.02 0.08 0.05
+      }
+    }
+  ]
+  name "wall_south_east"
+  boundingObject Box {
+    size 0.02 0.08 0.05
+  }
+}
+Solid {
+  translation 0.2 -0.22 0.025
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+      }
+      geometry Box {
+        size 0.3 0.02 0.05
+      }
+    }
+  ]
+  name "wall_south_end"
+  boundingObject Box {
+    size 0.3 0.02 0.05
+  }
+}
+Solid {
+  translation 0.41 0.29 0.025
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+      }
+      geometry Box {
+        size 0.18 0.02 0.05
+      }
+    }
+  ]
+  name "wall_goal_bottom"
+  boundingObject Box {
+    size 0.18 0.02 0.05
+  }
+}
+Solid {
+  translation 0.41 0.49 0.025
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+      }
+      geometry Box {
+        size 0.18 0.02 0.05
+      }
+    }
+  ]
+  name "wall_goal_top"
+  boundingObject Box {
+    size 0.18 0.02 0.05
+  }
+}
+Solid {
+  translation 0.49 0.39 0.025
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+      }
+      geometry Box {
+        size 0.02 0.22 0.05
+      }
+    }
+  ]
+  name "wall_goal_end"
+  boundingObject Box {
+    size 0.02 0.22 0.05
+  }
+}
+E-puck {
+  hidden position_0_0 257.2358964309186
+  hidden position_0_1 297.132253491422
+  hidden linearVelocity_0 -7.841501800795403e-06 -6.636640487342983e-05 9.039579830651193e-06
+  hidden angularVelocity_0 0.004427129912420526 -0.0005317513665109509 0.3497026563930117
+  hidden rotation_1 0 0.9999999999999999 0 5.908484143735155
+  hidden linearVelocity_1 -0.001048383937625752 -0.009161841685565096 -2.8914045722254035e-07
+  hidden angularVelocity_1 0.5011824971625084 -0.057566692210162834 0.3509399020025325
+  hidden rotation_2 0 -1 0 4.460641253198173
+  hidden linearVelocity_2 0.001028679614897004 0.008984714856660664 -2.900101100608047e-07
+  hidden angularVelocity_2 -0.49232828705307996 0.056502840779973626 0.35093244457956485
+  translation 0.43113952660026805 0.217038720693897 -6.552109995635637e-05
+  rotation 0.00023320563617625165 -0.00026419385999435993 0.9999999379083658 1.4589782267506213
+  controller "Ruedas"
+}

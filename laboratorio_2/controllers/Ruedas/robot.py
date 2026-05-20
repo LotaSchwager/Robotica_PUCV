@@ -1,0 +1,265 @@
+from __future__ import annotations
+
+from controller import Robot
+from enum import Enum
+import math
+import random
+from typing import Optional
+
+from wheel import WheelController
+from proximity import ProximityController
+
+class RobotState(Enum):
+    RUNNING = "RUNNING"
+    STOPPED = "STOPPED"
+    TURN_LEFT = "TURN_LEFT"
+    TURN_RIGHT = "TURN_RIGHT"
+    OWN_TURN = "OWN_TURN"
+    CIRCLE = "CIRCLE"
+
+class EpuckRobot:
+    def __init__(self, wheel_radius_m: float = 0.0205, axle_length_m: float = 0.052):
+        self.robot = Robot()
+        self.timestep = int(self.robot.getBasicTimeStep())
+
+        # Parámetros geométricos (aprox. e-puck). Útiles para convertir encoders a desplazamiento.
+        self.wheel_radius_m = float(wheel_radius_m)
+        self.axle_length_m = float(axle_length_m)
+        
+        # Pasamos el timestep a las ruedas para que pueda inicializar los sensores de posición
+        self.wheels = WheelController(self.robot, self.timestep)
+        self.proximity = ProximityController(self.robot, self.timestep)
+        self.state = RobotState.STOPPED
+
+        # Estado interno para odometría incremental
+        self._prev_left_rad: Optional[float] = None
+        self._prev_right_rad: Optional[float] = None
+
+    def step(self):
+        return self.robot.step(self.timestep) != -1
+
+    def encoder_increment(self):
+        """Compute encoder increments and derived motion since last call.
+
+        Returns:
+            (left_rad, right_rad, d_left_rad, d_right_rad, delta_s_m, delta_theta_rad)
+
+        Where:
+            delta_s_m: linear displacement estimate (meters)
+            delta_theta_rad: heading change estimate (radians)
+        """
+        left_rad, right_rad = self.wheels.get_positions()
+        left_rad = float(left_rad)
+        right_rad = float(right_rad)
+
+        if self._prev_left_rad is None or self._prev_right_rad is None:
+            self._prev_left_rad = left_rad
+            self._prev_right_rad = right_rad
+            return left_rad, right_rad, 0.0, 0.0, 0.0, 0.0
+
+        d_left = left_rad - float(self._prev_left_rad)
+        d_right = right_rad - float(self._prev_right_rad)
+
+        self._prev_left_rad = left_rad
+        self._prev_right_rad = right_rad
+
+        delta_s = self.wheel_radius_m * (d_left + d_right) / 2.0
+        delta_theta = 0.0
+        if self.axle_length_m != 0.0:
+            delta_theta = self.wheel_radius_m * (d_right - d_left) / self.axle_length_m
+
+        return left_rad, right_rad, d_left, d_right, float(delta_s), float(delta_theta)
+
+    def move_steps(self, target_rads, speed_factor=0.5):
+        """
+        Ordena mover el robot en línea recta por 'target_rads' cantidad de radianes (pasos).
+        Si el sensor detecta un obstáculo antes de terminar los pasos, se detiene
+        completamente y cambia su estado a STOPPED.
+        """
+        self.state = RobotState.RUNNING
+        # Obtenemos la medida inicial de los sensores de posición (encoders)
+        start_left, start_right = self.wheels.get_positions()
+        
+        print(f"-> [ESTADO: {self.state.value}] Instrucción recibida: avanzar por {target_rads} pasos (radianes).")
+        self.wheels.forward(speed_factor)
+        
+        while self.step():
+            # Condición de control: ¿Hay un obstáculo interrumpiendo el progreso?
+            if self.proximity.is_obstacle_ahead(threshold=90.0):
+                print(f"¡Obstáculo, deteniéndose...")
+                self.stop()
+                return False  # Indica que no completó toda la distancia
+                
+            # ¿Cuántos pasos se ha dado?
+            curr_left, curr_right = self.wheels.get_positions()
+            
+            # Promediamos la distancia recorrida de ambas ruedas
+            dist_travelled = (abs(curr_left - start_left) + abs(curr_right - start_right)) / 2.0
+            
+            if dist_travelled >= target_rads:
+                print(f"Avance completado con éxito ({target_rads} pasos recorridos).")
+                self.stop()
+                return True # Indica que completó la distancia
+                
+        return False
+    
+    def backward_steps(self, target_rads, speed_factor=0.5):
+        """
+        Ordena mover el robot en línea recta hacia atrás por 'target_rads' pasos, ´para salir del bucle.
+        """
+        self.state = RobotState.RUNNING
+        start_left, start_right = self.wheels.get_positions()
+        
+        print(f"-> [ESTADO: {self.state.value}] Instrucción recibida: retroceder por {target_rads} pasos.")
+        self.wheels.backward(speed_factor)
+        
+        while self.step():
+            curr_left, curr_right = self.wheels.get_positions()
+            
+            # Promediamos la distancia recorrida de ambas ruedas
+            dist_travelled = (abs(curr_left - start_left) + abs(curr_right - start_right)) / 2.0
+            
+            if dist_travelled >= target_rads:
+                print(f"Retroceso completado ({target_rads} pasos).")
+                self.stop()
+                return True
+                
+        return False
+
+    def stop(self):
+        """Detiene el robot y cambia su estado a STOPPED."""
+        self.wheels.stop()
+        self.state = RobotState.STOPPED
+        print(f"-> [ESTADO: {self.state.value}] Robot detenido.")
+
+    def turn_steps(self, target_rads, direction='izquierda', speed_factor=0.5, check_obstacle=True):
+        """
+        Gira en su propio eje cierta cantidad de pasos (radianes). 
+        También chequea obstáculos en pleno giro, a menos que check_obstacle sea False.
+        """
+        self.state = RobotState.OWN_TURN
+        start_left, start_right = self.wheels.get_positions()
+        
+        if direction in ('izquierda', -1):
+            direction_label = 'izquierda'
+        else:
+            direction_label = 'derecha'
+
+        print(f"-> [ESTADO: {self.state.value}] Instrucción recibida: girar {target_rads} pasos a la {direction_label}.")
+        if direction_label == 'izquierda':
+            self.wheels.turn_own_axis_left(speed_factor)
+        else:
+            self.wheels.turn_own_axis_right(speed_factor)
+            
+        while self.step():
+            # Condición de control durante el giro
+            if check_obstacle and self.proximity.is_obstacle_ahead(threshold=100.0):
+                print(f"¡Obstáculo detectado, deteniéndose...")
+                self.stop()
+                return False
+                
+            curr_left, curr_right = self.wheels.get_positions()
+            
+            # Al girar sobre su eje, un motor suma y el otro resta. Tomamos valor absoluto.
+            dist_travelled = (abs(curr_left - start_left) + abs(curr_right - start_right)) / 2.0
+            
+            if dist_travelled >= target_rads:
+                print(f"Giro completado con éxito ({target_rads} pasos girados).")
+                self.stop()
+                return True
+                
+        return False
+
+    def move_circle(self, radius_steps, speed_factor=0.5):
+        """Realiza un movimiento circular."""
+        self.state = RobotState.CIRCLE
+        print(f"-> [ESTADO: {self.state.value}] Realizando círculo.")
+        self.wheels.curve_right(speed_factor)
+        # Simplemente corre por un tiempo o distancia fija
+        count = 0
+        while self.step() and count < radius_steps * 100:
+            if self.proximity.is_obstacle_ahead(threshold=100.0):
+                self.stop()
+                return False
+            count += 1
+        self.stop()
+        return True
+
+    def rotate_random(self):
+        """Gira el robot para evadir un obstáculo, asegurando darle la espalda (quedar cara a cara a lo libre)."""
+        values = self.proximity.get_values()
+        
+        # Sensor izquierdo: ps7 Sensor derecho: ps0.
+        left_val = values[7]
+        right_val = values[0]
+        
+        # giramos hacia el lado más con menor lectura
+        if left_val > right_val:
+            direction = 1  # Girar a la derecha
+        else:
+            direction = -1 # Girar a la izquierda
+            
+        # Le damos un giro a la espalda del robot
+        angle = random.uniform(math.pi * 0.75, math.pi)
+        
+        # Asignamos la equivalencia del radian a movimiento de rueda del e-puck
+        wheel_turn_rads = angle * 2.5
+        direction_label = 'derecha' if direction == 1 else 'izquierda'
+
+        print(
+            f"-> Esquivando (esquina/pared): Rotando ~{angle*180/math.pi:.0f}° a la {direction_label} "
+            f"(Izq: {left_val:.1f}, Der: {right_val:.1f})"
+        )
+        # check_obstacle=False para que no cancele este giro evasivo mientras sigue cerca de la pared.
+        return self.turn_steps(wheel_turn_rads, direction, check_obstacle=False)
+
+    def rotar_tiempo(self, time_ms, speed_factor=0.33):
+        pass
+
+    def movimiento_cuadrado(self):
+        """
+        Movimiento en cuadrado usando tiempo:
+        avanza 3 segundos, gira 90°, repetir 4 veces.
+        """
+        print("-> Iniciando movimiento en cuadrado (basado en tiempo)")
+    
+        tiempo_avance = 3000  # ms = 3 segundos
+        tiempo_giro = 1000    # ms aproximado para 90°
+    
+        for i in range(4):
+            print(f"Lado {i+1} del cuadrado")
+    
+            # ===== AVANZAR =====
+            self.wheels.forward(0.5)
+            tiempo = 0
+    
+            while self.step() and tiempo < tiempo_avance:
+                if self.proximity.is_obstacle_ahead(threshold=100.0):
+                    print("Obstáculo detectado durante avance")
+                    self.stop()
+                    return False
+                tiempo += self.timestep
+    
+            self.stop()
+    
+            # ===== GIRAR 90° =====
+            self.wheels.turn_own_axis_left(0.33)
+            tiempo = 0
+    
+            while self.step() and tiempo < tiempo_giro:
+                tiempo += self.timestep
+    
+            self.stop()
+    
+        print("-> Cuadrado completado")
+        return True
+
+    # Alias por compatibilidad (el controlador actual llama a move_square())
+    def move_square(self):
+        return self.movimiento_cuadrado()
+
+    def get_position(self):
+        raise RuntimeError(
+            "GPS no está configurado en este controlador. "
+            "Si necesitas posición global, agrega/activa un GPS en el robot y habilítalo antes de usarlo."
+        )
