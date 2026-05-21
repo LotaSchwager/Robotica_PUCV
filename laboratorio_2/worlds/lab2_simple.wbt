@@ -1,0 +1,68 @@
+#VRML_SIM R2025a utf8
+
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackground.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/backgrounds/protos/TexturedBackgroundLight.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/floors/protos/RectangleArena.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/robots/gctronic/e-puck/protos/E-puck.proto"
+
+WorldInfo {
+}
+Viewpoint {
+  orientation 0.03952103155441621 0.9982625746269104 0.043702633377488156 0.5421241255756133
+  position -1.5395991817335077 -0.03234420898054628 0.8995029916075078
+}
+TexturedBackground {
+}
+TexturedBackgroundLight {
+}
+RectangleArena {
+}
+Solid {
+  name "obstacle_1"
+  translation 0.2 0 0.025
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+      }
+      geometry Box {
+        size 0.08 0.08 0.05
+      }
+    }
+  ]
+  boundingObject Box {
+    size 0.08 0.08 0.05
+  }
+}
+Solid {
+  name "obstacle_2"
+  translation -0.1 0.18 0.025
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+      }
+      geometry Box {
+        size 0.1 0.06 0.05
+      }
+    }
+  ]
+  boundingObject Box {
+    size 0.1 0.06 0.05
+  }
+}
+E-puck {
+  hidden position_0_0 12.80423085075172
+  hidden position_0_1 -12.804231110434454
+  hidden linearVelocity_0 3.054900707608271e-05 0.0001143784022574153 2.5412394473772707e-07
+  hidden angularVelocity_0 -0.0009059298851831268 0.001981646523059409 -1.538289100003003
+  hidden rotation_1 0 1 0 0.2378602363925472
+  hidden linearVelocity_1 -0.03686467182860089 -0.015865683008412824 -1.8399197543316888e-08
+  hidden angularVelocity_1 0.8662397215658268 -2.0068785509418134 -1.555121538453644
+  hidden rotation_2 0 -1 0 0.23786049607528056
+  hidden linearVelocity_2 0.036944055196716105 0.01610543962813651 -1.6331975416451093e-08
+  hidden angularVelocity_2 -0.8680513831637612 2.01084188093115 -1.555137878509092
+  translation -0.2998963067202381 -1.4242253518838806e-05 -8.777313367055485e-05
+  rotation -4.33610684407449e-05 -6.725320033848396e-06 0.999999999037294 -2.7613671659856958
+  controller "Ruedas"
+}
