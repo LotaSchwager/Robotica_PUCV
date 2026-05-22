@@ -141,3 +141,37 @@ En `laboratorio_1/controllers/Ruedas/Ruedas.py` puedes cambiar `CONTROL_SOURCE` 
 
 para comparar navegación usando medición cruda, filtrada y estimación fusionada.
 
+## Resultados Lab 2
+
+1. Registro de señales crudas de sensores y encoders.
+
+   ![Encoders y comandos](Analisis/graficos/encoders_velocidades.png)
+
+2. Estimación de avance del robot a partir de encoders.
+
+   ![Desplazamiento y orientación](Analisis/graficos/desplazamiento_encoders.png)
+
+3. Filtro simple (EMA) y comparación con medición cruda.
+
+   ![Comparativa filtros (ventana)](Analisis/graficos/comparativa_filtros.png)
+
+4. Filtro de Kalman para estimar distancia frontal (señal fusionada).
+
+   ![Comparativa filtros (ventana, downsample)](Analisis/graficos/comparativa_filtros_full.png)
+
+5. Navegación reactiva usando distancia estimada (Kalman).
+
+   ![Estados de navegación](Analisis/graficos/estados_navegacion.png)
+
+6. Uso de sensores laterales para decidir el giro.
+
+   ![Sensores laterales](Analisis/graficos/sensores_laterales.png)
+
+7. Comparación de comportamiento usando raw/filtered/kalman.
+
+   ![Distancia frontal usada](Analisis/graficos/comparacion_front_used.png)
+
+   ![Comandos de control](Analisis/graficos/comparacion_cmd.png)
+
+   ![Distribución de estados](Analisis/graficos/comparacion_comportamiento.png)
+

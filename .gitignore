@@ -5,3 +5,7 @@ __pycache__/
 # Editor/OS temporary files
 .DS_Store
 Thumbs.db
+
+# El env de jupyter
+env/
+
