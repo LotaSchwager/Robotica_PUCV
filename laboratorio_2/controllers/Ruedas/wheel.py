@@ -1,3 +1,6 @@
+import math
+
+
 class WheelController:
     MAX_SPEED = 6.25
 
@@ -24,10 +27,32 @@ class WheelController:
 
     def set_velocities(self, left, right):
         """Método base para asignar velocidades."""
+        # Asegura modo control por velocidad (si veníamos de setPosition()).
+        self.left_motor.setPosition(float('inf'))
+        self.right_motor.setPosition(float('inf'))
         self.last_left_velocity = float(left)
         self.last_right_velocity = float(right)
         self.left_motor.setVelocity(left)
         self.right_motor.setVelocity(right)
+
+    def set_position_targets(self, left_target_rad: float, right_target_rad: float, max_speed_rad_s: float) -> None:
+        """Control por posición: ordena a cada rueda alcanzar un ángulo absoluto.
+
+        Nota: En Webots, con setPosition() el signo de giro lo determina target-actual;
+        setVelocity() define la velocidad máxima (siempre positiva).
+        """
+        left_curr, right_curr = self.get_positions()
+        left_target = float(left_target_rad)
+        right_target = float(right_target_rad)
+        vmax = abs(float(max_speed_rad_s))
+
+        self.last_left_velocity = math.copysign(vmax, left_target - float(left_curr))
+        self.last_right_velocity = math.copysign(vmax, right_target - float(right_curr))
+
+        self.left_motor.setVelocity(vmax)
+        self.right_motor.setVelocity(vmax)
+        self.left_motor.setPosition(left_target)
+        self.right_motor.setPosition(right_target)
 
     def get_last_velocities(self):
         return self.last_left_velocity, self.last_right_velocity

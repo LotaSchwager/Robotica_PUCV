@@ -8,17 +8,18 @@ EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/project
 WorldInfo {
 }
 Viewpoint {
-  orientation 0.015414923172640664 0.9998126101441411 0.011710027341598834 1.5311483186979953
-  position -0.18548712956195573 0.03991252142015311 2.0322886352792957
+  orientation -0.7089416011357847 0.007960130512084577 0.7052222646097189 3.163345916617642
+  position -0.058732706594476825 0.8353096669252258 5.799620891790482
 }
 TexturedBackground {
 }
 TexturedBackgroundLight {
 }
 RectangleArena {
+  floorSize 2 2
 }
 Pose {
-  translation -0.38 0 0.0005
+  translation -0.9 0.9 0.0005
   children [
     Shape {
       appearance PBRAppearance {
@@ -26,13 +27,13 @@ Pose {
         roughness 1
       }
       geometry Box {
-        size 0.12 0.12 0.001
+        size 0.3 0.3 0.001
       }
     }
   ]
 }
 Pose {
-  translation 0.42 0.4 0.0005
+  translation 0.9 -0.9 0.0005
   children [
     Shape {
       appearance PBRAppearance {
@@ -40,64 +41,13 @@ Pose {
         roughness 1
       }
       geometry Box {
-        size 0.12 0.12 0.001
+        size 0.3 0.3 0.001
       }
     }
   ]
 }
 Solid {
-  translation -0.145 -0.14 0.025
-  children [
-    Shape {
-      appearance PBRAppearance {
-        roughness 1
-      }
-      geometry Box {
-        size 0.61 0.02 0.05
-      }
-    }
-  ]
-  name "wall_main_bottom"
-  boundingObject Box {
-    size 0.61 0.02 0.05
-  }
-}
-Solid {
-  translation 0.2 0 0.025
-  children [
-    Shape {
-      appearance PBRAppearance {
-        roughness 1
-      }
-      geometry Box {
-        size 0.02 0.32 0.05
-      }
-    }
-  ]
-  name "wall_dead_end_1"
-  boundingObject Box {
-    size 0.02 0.32 0.05
-  }
-}
-Solid {
-  translation 0.06 0.28 0.025
-  children [
-    Shape {
-      appearance PBRAppearance {
-        roughness 1
-      }
-      geometry Box {
-        size 0.02 0.28 0.05
-      }
-    }
-  ]
-  name "wall_north_west"
-  boundingObject Box {
-    size 0.02 0.28 0.05
-  }
-}
-Solid {
-  translation -0.07 0.15 0.025
+  translation -0.74 0.25 0.025
   rotation 0 0 1 1.5708
   children [
     Shape {
@@ -105,17 +55,120 @@ Solid {
         roughness 1
       }
       geometry Box {
-        size 0.02 0.28 0.05
+        size 1.5 0.02 0.05
       }
     }
   ]
-  name "wall_north_west(1)"
+  name "maze_wall_01"
   boundingObject Box {
-    size 0.02 0.28 0.05
+    size 1.5 0.02 0.05
   }
 }
 Solid {
-  translation -0.35 0.15 0.025
+  translation 0.24 2.08 0.025
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+      }
+      geometry Box {
+        size 1.5 0.02 0.05
+      }
+    }
+  ]
+  name "maze_wall_01(1)"
+  boundingObject Box {
+    size 1.5 0.02 0.05
+  }
+}
+Solid {
+  translation 0.37 2.03 0.025
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+      }
+      geometry Box {
+        size 1.25 0.02 0.05
+      }
+    }
+  ]
+  name "maze_wall_01(2)"
+  boundingObject Box {
+    size 1.25 0.02 0.05
+  }
+}
+Solid {
+  translation -0.37 -0.77 0.025
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+      }
+      geometry Box {
+        size 1.25 0.02 0.05
+      }
+    }
+  ]
+  name "maze_wall_01(8)"
+  boundingObject Box {
+    size 1.25 0.02 0.05
+  }
+}
+Solid {
+  translation 0.26 -0.12 0.025
+  rotation 0 0 1 -1.5707953071795862
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+      }
+      geometry Box {
+        size 1.25 0.02 0.05
+      }
+    }
+  ]
+  name "maze_wall_01(9)"
+  boundingObject Box {
+    size 1.25 0.02 0.05
+  }
+}
+Solid {
+  translation 0.62 1.93 0.025
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+      }
+      geometry Box {
+        size 0.75 0.02 0.05
+      }
+    }
+  ]
+  name "maze_wall_01(3)"
+  boundingObject Box {
+    size 0.75 0.02 0.05
+  }
+}
+Solid {
+  translation -0.37 -0.49 0.025
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+      }
+      geometry Box {
+        size 0.74 0.02 0.05
+      }
+    }
+  ]
+  name "maze_wall_01(11)"
+  boundingObject Box {
+    size 0.74 0.02 0.05
+  }
+}
+Solid {
+  translation -0.01 -0.12 0.025
   rotation 0 0 1 1.5708
   children [
     Shape {
@@ -123,163 +176,321 @@ Solid {
         roughness 1
       }
       geometry Box {
-        size 0.02 0.28 0.05
+        size 0.74 0.02 0.05
       }
     }
   ]
-  name "wall_north_west(2)"
+  name "maze_wall_01(10)"
   boundingObject Box {
-    size 0.02 0.28 0.05
+    size 0.74 0.02 0.05
   }
 }
 Solid {
-  translation 0.34 0.22 0.025
+  translation 0.74 -0.63 0.025
+  rotation 0 0 1 1.5708
   children [
     Shape {
       appearance PBRAppearance {
         roughness 1
       }
       geometry Box {
-        size 0.02 0.16 0.05
+        size 0.74 0.02 0.05
       }
     }
   ]
-  name "wall_north_east"
+  name "maze_wall_01(24)"
   boundingObject Box {
-    size 0.02 0.16 0.05
+    size 0.74 0.02 0.05
   }
 }
 Solid {
-  translation 0.16 0.42 0.025
+  translation 0.75 1.88 0.025
   children [
     Shape {
       appearance PBRAppearance {
         roughness 1
       }
       geometry Box {
-        size 0.3 0.02 0.05
+        size 0.5 0.02 0.05
       }
     }
   ]
-  name "wall_north_end"
+  name "maze_wall_01(5)"
   boundingObject Box {
-    size 0.3 0.02 0.05
+    size 0.5 0.02 0.05
   }
 }
 Solid {
-  translation 0.06 -0.18 0.025
+  translation 0 0.51 0.025
   children [
     Shape {
       appearance PBRAppearance {
         roughness 1
       }
       geometry Box {
-        size 0.02 0.08 0.05
+        size 0.5 0.02 0.05
       }
     }
   ]
-  name "wall_south_west"
+  name "maze_wall_01(15)"
   boundingObject Box {
-    size 0.02 0.08 0.05
+    size 0.5 0.02 0.05
   }
 }
 Solid {
-  translation 0.34 -0.18 0.025
+  translation 0.74 0.25 0.025
+  rotation 0 0 1 1.5708
   children [
     Shape {
       appearance PBRAppearance {
         roughness 1
       }
       geometry Box {
-        size 0.02 0.08 0.05
+        size 0.5 0.02 0.05
       }
     }
   ]
-  name "wall_south_east"
+  name "maze_wall_01(22)"
   boundingObject Box {
-    size 0.02 0.08 0.05
+    size 0.5 0.02 0.05
   }
 }
 Solid {
-  translation 0.2 -0.22 0.025
+  translation 0.5 -0.26 0.025
   children [
     Shape {
       appearance PBRAppearance {
         roughness 1
       }
       geometry Box {
-        size 0.3 0.02 0.05
+        size 0.5 0.02 0.05
       }
     }
   ]
-  name "wall_south_end"
+  name "maze_wall_01(20)"
   boundingObject Box {
-    size 0.3 0.02 0.05
+    size 0.5 0.02 0.05
   }
 }
 Solid {
-  translation 0.41 0.29 0.025
+  translation 0 0.74 0.025
   children [
     Shape {
       appearance PBRAppearance {
         roughness 1
       }
       geometry Box {
-        size 0.18 0.02 0.05
+        size 0.5 0.02 0.05
       }
     }
   ]
-  name "wall_goal_bottom"
+  name "maze_wall_01(17)"
   boundingObject Box {
-    size 0.18 0.02 0.05
+    size 0.5 0.02 0.05
   }
 }
 Solid {
-  translation 0.41 0.49 0.025
+  translation 0.87 1.83 0.025
   children [
     Shape {
       appearance PBRAppearance {
         roughness 1
       }
       geometry Box {
-        size 0.18 0.02 0.05
+        size 0.24 0.02 0.05
       }
     }
   ]
-  name "wall_goal_top"
+  name "maze_wall_01(6)"
   boundingObject Box {
-    size 0.18 0.02 0.05
+    size 0.24 0.02 0.05
   }
 }
 Solid {
-  translation 0.49 0.39 0.025
+  translation -0.13 0.24 0.025
   children [
     Shape {
       appearance PBRAppearance {
         roughness 1
       }
       geometry Box {
-        size 0.02 0.22 0.05
+        size 0.24 0.02 0.05
       }
     }
   ]
-  name "wall_goal_end"
+  name "maze_wall_01(7)"
   boundingObject Box {
-    size 0.02 0.22 0.05
+    size 0.24 0.02 0.05
+  }
+}
+Solid {
+  translation -0.38 -0.01 0.025
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+      }
+      geometry Box {
+        size 0.26 0.02 0.05
+      }
+    }
+  ]
+  name "maze_wall_01(13)"
+  boundingObject Box {
+    size 0.26 0.02 0.05
+  }
+}
+Solid {
+  translation -0.24 0.12 0.025
+  rotation 0 0 1 -1.5707953071795862
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+      }
+      geometry Box {
+        size 0.24 0.02 0.05
+      }
+    }
+  ]
+  name "maze_wall_01(14)"
+  boundingObject Box {
+    size 0.24 0.02 0.05
+  }
+}
+Solid {
+  translation -0.24 0.63 0.025
+  rotation 0 0 1 -1.5707953071795862
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+      }
+      geometry Box {
+        size 0.24 0.02 0.05
+      }
+    }
+  ]
+  name "maze_wall_01(16)"
+  boundingObject Box {
+    size 0.24 0.02 0.05
+  }
+}
+Solid {
+  translation 0.26 0.63 0.025
+  rotation 0 0 1 -1.5707953071795862
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+      }
+      geometry Box {
+        size 0.24 0.02 0.05
+      }
+    }
+  ]
+  name "maze_wall_01(19)"
+  boundingObject Box {
+    size 0.24 0.02 0.05
+  }
+}
+Solid {
+  translation 0.63 0.0100004 0.025
+  rotation 0 0 1 1.01503e-06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+      }
+      geometry Box {
+        size 0.24 0.02 0.05
+      }
+    }
+  ]
+  name "maze_wall_01(21)"
+  boundingObject Box {
+    size 0.24 0.02 0.05
+  }
+}
+Solid {
+  translation 0.87 0.51 0.025
+  rotation 0 0 1 1.01503e-06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+      }
+      geometry Box {
+        size 0.28 0.02 0.05
+      }
+    }
+  ]
+  name "maze_wall_01(23)"
+  boundingObject Box {
+    size 0.28 0.02 0.05
+  }
+}
+Solid {
+  translation 0.5 1.98 0.025
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+      }
+      geometry Box {
+        size 1 0.02 0.05
+      }
+    }
+  ]
+  name "maze_wall_01(4)"
+  boundingObject Box {
+    size 1 0.02 0.05
+  }
+}
+Solid {
+  translation 0.51 0.5 0.025
+  rotation 0 0 1 1.5708
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+      }
+      geometry Box {
+        size 1 0.02 0.05
+      }
+    }
+  ]
+  name "maze_wall_01(18)"
+  boundingObject Box {
+    size 1 0.02 0.05
+  }
+}
+Solid {
+  translation -0.51 0.5 0.025
+  rotation 0 0 1 -1.5707953071795862
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+      }
+      geometry Box {
+        size 1 0.02 0.05
+      }
+    }
+  ]
+  name "maze_wall_01(12)"
+  boundingObject Box {
+    size 1 0.02 0.05
   }
 }
 E-puck {
-  hidden position_0_0 257.2358964309186
-  hidden position_0_1 297.132253491422
-  hidden linearVelocity_0 -7.841501800795403e-06 -6.636640487342983e-05 9.039579830651193e-06
-  hidden angularVelocity_0 0.004427129912420526 -0.0005317513665109509 0.3497026563930117
-  hidden rotation_1 0 0.9999999999999999 0 5.908484143735155
-  hidden linearVelocity_1 -0.001048383937625752 -0.009161841685565096 -2.8914045722254035e-07
-  hidden angularVelocity_1 0.5011824971625084 -0.057566692210162834 0.3509399020025325
-  hidden rotation_2 0 -1 0 4.460641253198173
-  hidden linearVelocity_2 0.001028679614897004 0.008984714856660664 -2.900101100608047e-07
-  hidden angularVelocity_2 -0.49232828705307996 0.056502840779973626 0.35093244457956485
-  translation 0.43113952660026805 0.217038720693897 -6.552109995635637e-05
-  rotation 0.00023320563617625165 -0.00026419385999435993 0.9999999379083658 1.4589782267506213
+  hidden position_0_0 55.49411301990227
+  hidden position_0_1 55.494113019997556
+  hidden linearVelocity_0 8.288112931515804e-08 -0.06971746972411916 -2.5052371861467766e-05
+  hidden angularVelocity_0 0.06450248139457834 -8.072105491192113e-08 -1.0578317844632482e-07
+  hidden rotation_1 0 1 0 5.228630562465581
+  hidden rotation_2 0 1 0 5.2286305625608644
+  translation -0.86918398789186 0.8479791613874944 -6.07364614542711e-05
+  rotation -0.002995931751421716 -0.0029959181623072624 -0.999991024393372 1.570804217702958
   controller "Ruedas"
 }
