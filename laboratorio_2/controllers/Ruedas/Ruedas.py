@@ -62,7 +62,7 @@ KALMAN_R = 5e-3
 
 # Parámetros geométricos aproximados del e-puck (para encoders -> metros)
 WHEEL_RADIUS_M = 0.0205
-AXLE_LENGTH_M = 0.0573 # entre .0523 y .0534 
+AXLE_LENGTH_M = 0.0573  # longitud entre ruedas aproximada usada en la geometría del giro
 
 # Giro fijo de 90° usando encoders (NO por tiempo).
 # TURN_WHEEL_TARGET_RAD indica cuántos radianes debe girar cada rueda
