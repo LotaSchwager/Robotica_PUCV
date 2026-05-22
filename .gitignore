@@ -6,6 +6,8 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
+# CSV files
+*.csv
 # El env de jupyter
 env/
 
