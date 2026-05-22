@@ -78,7 +78,7 @@ TURN_WHEEL_TARGET_RAD = (AXLE_LENGTH_M / 2.0) * TURN_ANGLE_RAD / WHEEL_RADIUS_M
 TURN_WHEEL_COMMAND_RAD = TURN_WHEEL_TARGET_RAD #+ TURN_WHEEL_EXTRA_RAD
 
 # Tolerancia (rad) para considerar que el motor llegó a su objetivo en modo posición.
-TURN_POSITION_TOLERANCE_RAD = 0.005 # Antes 0.01 ahora 0.001
+TURN_POSITION_TOLERANCE_RAD = 0.005 # Antes 0.01, ahora 0.005
 
 
 STATE_FORWARD = "FORWARD"
