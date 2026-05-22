@@ -141,7 +141,21 @@ En `laboratorio_1/controllers/Ruedas/Ruedas.py` puedes cambiar `CONTROL_SOURCE` 
 
 para comparar navegación usando medición cruda, filtrada y estimación fusionada.
 
+## Escenarios de prueba
+
+- **Mapa simple:** entorno con pocos obstáculos; base para comparar raw/filtered/kalman en una ventana fija.
+- **Mapa complejo:** entorno con varios obstáculos o pasillos estrechos; mismo protocolo para contrastar robustez.
+
+En ambos escenarios se analiza:
+
+- estabilidad del movimiento,
+- cantidad de giros innecesarios,
+- capacidad para evitar colisiones,
+- diferencias entre mediciones crudas, filtradas y fusionadas.
+
 ## Resultados Lab 2
+
+Los gráficos que siguen corresponden al mapa simple (ventana 0–600 s).
 
 1. Registro de señales crudas de sensores y encoders.
 
