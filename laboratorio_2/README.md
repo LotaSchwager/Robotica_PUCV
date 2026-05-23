@@ -1,191 +1,320 @@
-# Laboratorio 1
+# Laboratorio 2: Navegación Reactiva con Filtrado y Fusión de Sensores en Webots
 
-## Descripción del laboratorio
-
-Este laboratorio consistirá en programar y testear con un robot de nombre e-puck, donde se llevarán <br>
-a cabo distintas pruebas en relación a las velocidades de su par de ruedas. La prueba se llevará a <br>
-cabo en un mundo simple que tendrá forma de caja y no habrá ningún obstáculo. Las tareas a realizar <br>
-serán las siguientes: <br>
-
-### Línea principal del laboratorio
-
-1. Abrir Webots y cargar un robot diferencial (por ejemplo e-puck).
-2. Identificar los motores de las ruedas izquierda y derecha.
-3. Programar el robot para controlar las velocidades de las ruedas.
-4. Ejecutar los siguientes experimentos: <br>
-   $$v_r = v_l$$ → **movimiento recto** <br>
-   $$v_r \neq v_l$$ → **trayectoria curva** <br>
-   $$v_r = −v_l$$ → **rotación en el lugar** <br>
-5. Observar y describir la trayectoria del robot.
-
-### Extensión de la línea principal
-
-Modificar las velocidades de las ruedas en cada iteración para simular perturbaciones en los <br>
-actuadores, comparar:
-
-- trayectoria ideal
-- trayectoria con variaciones
-
-### Desafío
-
-Programar el robot para:
-
-- Dibujar una línea recta
-- Dibujar una curva
-- Dibujar un círculo
-- (Opcional) Dibujar un cuadrado o figura en 8
-
-### Preguntas de análisis
-
-1. ¿Qué ocurre cuando ambas ruedas tienen la misma velocidad?
-2. ¿Cómo cambia la trayectoria cuando las velocidades son diferentes?
-3. ¿Qué ocurre cuando una rueda gira en sentido opuesto a la otra?
-4. ¿Qué tipo de movimiento permite dibujar un círculo?
-
-## Como ejecutar el mundo
-
-Para ejecutar el mundo de simulación, debes dirigirte a la carpeta `worlds` y abrir el archivo con extensión `.wbt` en Webots (puedes utilizar la opción `File -> Open World...` o `Archivo -> Abrir mundo...` dentro del simulador). Este archivo contiene el ambiente donde se encuentra el robot e-puck.
-
-El robot e-puck utiliza como controlador principal el script ubicado en `laboratorio_1/controllers/Ruedas/Ruedas.py`. Este archivo es el punto de entrada que ejecuta la lógica de movimiento y evasión de obstáculos.
-
-Además, el sistema separa el controlador de las ruedas y sensor de proximidad, para que cada archvo tenga un rol concreto:
-
-**Clase `Robot` (`laboratorio_1/controllers/Ruedas/robot.py`)**
-Esta clase se encarga del manejo del robot e-puck:
-
-- `__init__`: Inicializa el robot y sus componentes.
-- `step`: Avanza un paso en la simulación.
-- `move_steps`: Ordena mover el robot en línea recta por 'target_rads' cantidad de radianes (pasos).
-- `stop`: Detiene el robot.
-- `turn_steps`: Gira el robot en su propio eje cierta cantidad de pasos (radianes).
-- `move_circle`: Realiza un movimiento circular.
-- `rotate_random`: Gira el robot para evadir un obstáculo, asegurando darle la espalda (quedar cara a cara a lo libre).
-
-**Clase `WheelController` (`laboratorio_1/controllers/Ruedas/wheel.py`)**
-Esta clase se encarga del manejo directo de los motores correspondientes a ambas ruedas:
-
-- `__init__`: Inicializa los motores izquierdo y derecho, junto con sus respectivos sensores de posición (encoders), habilitándolos e indicando una posición infinita para controlarlos por límite de velocidad.
-- `get_positions`: Retorna una tupla representativa con los radianes exactos que han girado ambas ruedas utilizando la lectura de los sensores.
-- `set_velocities`: Método base que asigna las velocidades a los motores.
-- `forward` y `backward`: Hacen avanzar o retroceder al robot en línea recta en función de una velocidad máxima y un factor.
-- `stop`: Detiene completamente el movimiento de los motores de manera predeterminada.
-- `turn_own_axis_left` y `turn_own_axis_right`: Fijan la velocidad de las ruedas en signos opuestos para que el robot pueda girar sobre su propio eje.
-- `curve_left` y `curve_right`: Asignan distintas escalas de rotación a las ruedas para generar una trayectoria curva hacia un lado u otro.
-- `movimiento_cuadrado`: Hace que el robot realice un movimiento coordinado formando un cuadrado.
-
-**Clase `ProximityController` (`laboratorio_1/controllers/Ruedas/proximity.py`)**
-Esta clase se encarga del manejo de los sensores de proximidad del robot:
-
-- `__init__`: Inicializa los 8 sensores de proximidad del robot.
-- `get_values`: Retorna una lista con los valores actuales de los 8 sensores.
-- `is_obstacle_ahead`: Detecta si hay un obstáculo enfrente.
-- `front_obstacle_hits`: Devuelve qué sensores frontales detectan obstáculo.
-- `front_obstacle_count`: Devuelve cuántos sensores frontales están activos.
-
-# Resultados obtenidos:
-
-Se ha logrado resolver satisfactoriamente la actividad, respondiendo a cada una de las preguntas y diseñando una serie de clases que organizaron de mejor manera el código para poder trabajar en equipo de manera conjunta y teniendo todos a disposición las mismas funciones para trabajar y trazar los movimientos o rutas del robot.
-
-Pudimos observar por separado las rutas del robot requeridas para completar la actividad, comprendiendo como funcionan las físicas y cámara del mundo, y además que sensores y actuadores tuvimos a disposición en el robot epuck para poder trabajar luego con estos (donde fue verdaderamente importante reconocer los nombres de las ruedas del robot y la cantidad y ubicaciones de cada uno de los sensores de proximidad).
-
-[Ver video de demostración en Google Drive](https://drive.google.com/file/d/116wOscYLrcVTE-72jvfchIpXETZmdEV7/view)
-
-## Preguntas
-
-Respuestas a las preguntas del pdf.
-
-### 1: ¿Qué ocurre cuando ambas ruedas tienen la misma velocidad?
-
-Respuesta: El robot continua en linea recta si es que no se ha definido una ruta distinta (Vr = Vi).
-
-### 2: ¿Cómo cambia la trayectoria cuando las velocidades son diferentes?
-
-Respuesta: El robot rota en la misma direccion que la rueda con menor velocidad (ej: si Vi (velocidad de la rueda izquierda) es menor, girará hacia la izquierda), pero girará en un circulo si la Vi se mantiene constante en el tiempo (Vr != Vi).
-
-### 3: ¿Qué ocurre cuando una rueda gira en sentido opuesto a la otra?
-
-Respuesta: El robot comienza a rotar en el mismo lugar, esto en caso que [Vr != -Vl] En caso que las velocidades sean distintas y en sentidos opuestos, el robot comienza a desplazarse a favor de la rueda de mayor velocidad pero rotando en dirección de la rueda de menor velocidad.
-
-
-### 4: ¿Qué tipo de movimiento permite dibujar un círculo?
-
-Respuesta: El robot necesita que las ruedas giren al mismo sentido pero con velocidades distintas (Vr != Vl), con esto el robot puede tener una trayectoría curva.
+**Curso:** ICI 4150 - Laboratorios: Robótica y Sistemas Autónomos  
+**Semestre:** 2026-01  
+**Integrantes del grupo:** [Pendiente - Agregar nombres]
 
 ---
 
-# Laboratorio 2 (implementación en este repo)
+## 1. Objetivo del Trabajo
 
-El controlador `laboratorio_1/controllers/Ruedas/Ruedas.py` fue extendido para cubrir la parte de codificación del Laboratorio 2:
+Implementar un sistema de navegación reactiva en Webots para un robot móvil diferencial. El sistema utiliza sensores de distancia y encoders de rueda, aplicando técnicas de filtrado y fusión sensorial mediante un filtro de Kalman para estimar la distancia frontal a obstáculos de manera más robusta. El objetivo es comparar el comportamiento del robot usando tres fuentes de información: mediciones crudas, mediciones filtradas y estimación fusionada.
 
-- registro de sensores crudos + encoders
-- filtro simple (EMA) sobre la distancia frontal
-- fusión sensorial (Kalman 1D) con predicción por encoders + corrección por sensores frontales
-- navegación reactiva usando distancia frontal estimada
-- decisión del giro usando sensores laterales
+---
 
-## Cómo ejecutar (Lab 2)
+## 2. Descripción del Robot y Sensores Utilizados
 
-1. Abrir Webots y cargar uno de estos mundos:
-   - `laboratorio_1/worlds/lab2_simple.wbt`
-   - `laboratorio_1/worlds/lab2_complex.wbt`
-2. Ejecutar la simulación.
-3. Al finalizar, se genera un CSV con las señales en `laboratorio_1/logs/`.
+Se utiliza el robot e-puck de Webots, un robot móvil diferencial con dos ruedas motorizadas independientes.
 
-## Modos para comparar comportamiento
+### Sensores de Proximidad/Distancia
 
-En `laboratorio_1/controllers/Ruedas/Ruedas.py` puedes cambiar `CONTROL_SOURCE` entre:
+El e-puck tiene 8 sensores de proximidad denominados ps0 a ps7. En este laboratorio se utilizan:
 
-- `"raw"`
-- `"filtered"`
-- `"kalman"`
+- **Sensores frontales:** ps0 (frente derecha) y ps7 (frente izquierda). Se toma el mínimo para obtener la distancia frontal al obstáculo más cercano.
+- **Sensores laterales derechos:** ps1 y ps2. Se utilizan para decidir la dirección del giro.
+- **Sensores laterales izquierdos:** ps5 y ps6. Se utilizan para decidir la dirección del giro.
 
-para comparar navegación usando medición cruda, filtrada y estimación fusionada.
+Los sensores proporcionan valores crudos que se convierten a distancia en metros utilizando una tabla de lookup inversa de Webots (interpolación lineal mediante bisect).
 
-## Escenarios de prueba
+### Encoders de Rueda
 
-- **Mapa simple:** entorno con pocos obstáculos; base para comparar raw/filtered/kalman en una ventana fija.
-- **Mapa complejo:** entorno con varios obstáculos o pasillos estrechos; mismo protocolo para contrastar robustez.
+El robot dispone de dos encoders:
+
+- **Encoder rueda izquierda:** Mide desplazamiento angular en radianes.
+- **Encoder rueda derecha:** Mide desplazamiento angular en radianes.
+
+Los encoders se utilizan para estimar el movimiento incremental del robot entre dos instantes consecutivos. El desplazamiento lineal se calcula como: s = r × θ, donde r = 0.0205 m (radio de la rueda).
+
+---
+
+## 3. Frecuencia de Muestreo
+
+La simulación en Webots ejecuta el controlador con un paso de tiempo fijo:
+
+- **Tiempo de muestreo:** Ts = 0.05 s
+- **Frecuencia de muestreo:** fs = 1/Ts = 20 Hz
+- **Duración de pruebas:** Típicamente 600 a 1200 segundos de simulación
+
+Todas las señales registradas, filtradas y estimadas se analizan con esta misma frecuencia.
+
+---
+
+## 4. Análisis de Señales Registradas
+
+Durante la simulación se registran continuamente:
+
+- Valores crudos de los 8 sensores de proximidad (ps0 a ps7)
+- Posiciones angulares de ambos encoders (radianes)
+- Velocidades comandadas a los motores
+- Distancias convertidas a metros
+- Señales filtradas y estimadas
+
+Los archivos se guardan como CSV en `laboratorio_2/logs/` con formato:
+- `lab2_raw_*.csv` para mediciones crudas
+- `lab2_filtered_*.csv` para mediciones filtradas
+- `lab2_kalman_*.csv` para estimación Kalman
+
+El archivo contiene columnas para tiempo, estado, todas las lecturas sensoriales, velocidades comandadas y las tres versiones de la distancia frontal (raw, EMA, Kalman).
+
+---
+
+## 5. Estimación del Avance Mediante Encoders
+
+El movimiento del robot se estima a partir de los encoders utilizando las siguientes fórmulas:
+
+**Desplazamiento lineal:**
+```
+delta_s = r × (d_left + d_right) / 2
+```
+donde r = 0.0205 m, d_left y d_right son los cambios angulares de cada rueda.
+
+**Desplazamiento angular:**
+```
+delta_theta = r × (d_right - d_left) / axle_length
+```
+donde axle_length = 0.0573 m (distancia entre ejes).
+
+El desplazamiento lineal delta_s se utiliza como entrada de predicción en el filtro de Kalman. Si el robot avanza delta_s metros, la distancia frontal debería disminuir en delta_s metros.
+
+---
+
+## 6. Filtro Simple Aplicado
+
+Se implementa un filtro de promedio móvil exponencial (EMA) sobre las mediciones frontales de distancia.
+
+**Ecuación:**
+```
+y_k = α × x_k + (1 - α) × y_{k-1}
+```
+
+donde:
+- y_k = salida filtrada en el paso k
+- x_k = medición cruda en el paso k
+- α = 0.25 (factor de suavizado)
+
+Con α = 0.25, el filtro retiene el 75% del valor anterior y añade el 25% de la medición actual. Esto reduce el ruido pero introduce un pequeño retraso en la respuesta.
+
+**Ubicación en código:** Clase `ExponentialMovingAverage` en `estimation.py` (líneas 8-23).
+
+---
+
+## 7. Implementación del Filtro de Kalman
+
+Se implementa un filtro de Kalman escalar (1D) que fusiona información del movimiento del robot (predicción por encoders) con mediciones directas de sensores (corrección).
+
+**Modelo matemático:**
+
+Estado: x_k = x_{k-1} + u_k + w_k, donde w_k ~ N(0, Q)  
+Medición: z_k = x_k + v_k, donde v_k ~ N(0, R)
+
+donde:
+- x_k = distancia frontal estimada
+- u_k = cambio de distancia predicho (= -delta_s_m si avanza)
+- z_k = lectura del sensor frontal
+- Q = varianza del proceso (1e-4)
+- R = varianza de medición (5e-3)
+
+**Ubicación en código:** Clase `Kalman1D` en `estimation.py` (líneas 27-69).
+
+---
+
+## 8. Etapas del Filtro de Kalman: Predicción y Corrección
+
+El filtro de Kalman ejecuta dos etapas en cada iteración:
+
+### Etapa de Predicción
+
+```
+x_pred = x_anterior + u
+P_pred = P_anterior + Q
+```
+
+La predicción estima la nueva distancia frontal basándose en cuánto se ha movido el robot. Si delta_s_m = 0.05 m, entonces u = -0.05 m.
+
+### Etapa de Corrección
+
+```
+innovacion = z - x_pred
+ganancia = P_pred / (P_pred + R)
+x_nuevo = x_pred + ganancia × innovacion
+P_nuevo = (1 - ganancia) × P_pred
+```
+
+La ganancia de Kalman (K) determina cuánto confiar en la medición versus la predicción:
+- Si R es grande (sensor ruidoso) → K tiende a 0 → confía más en predicción
+- Si R es pequeño (sensor preciso) → K tiende a 1 → confía más en medición
+- Si P_pred es grande (incertidumbre alta) → K aumenta → confía más en medición
+
+El resultado es una estimación más estable que cualquiera de las dos fuentes por separado.
+
+---
+
+## 9. Lógica de Navegación Reactiva Implementada
+
+El robot implementa una máquina de estados con tres estados: FORWARD, BACKUP y TURN.
+
+### Estado FORWARD (Avanzar)
+
+El robot avanza a velocidad 0.55 × MAX_SPEED (= 3.44 rad/s) mientras la distancia frontal sea mayor que 0.17 m. Si la distancia es menor, transiciona a BACKUP.
+
+### Estado BACKUP (Retroceso)
+
+Cuando se detecta un obstáculo, el robot retrocede a velocidad 0.45 × MAX_SPEED durante 17 pasos (0.85 segundos). Esto proporciona espacio antes de girar.
+
+### Estado TURN (Girar)
+
+El robot gira 90° sobre su propio eje utilizando control por posición de los encoders. La dirección del giro se decide según los sensores laterales:
+
+```
+delta_side = side_left - side_right
+
+si |delta_side| < 0.01 m:
+    si lado_izquierdo es más libre → gira a IZQUIERDA
+    si lado_derecho es más libre → gira a DERECHA
+sino:
+    ambos lados similares → usa sensores frontales para desempate
+```
+
+Una vez completado el giro (tolerancia de 0.005 rad), transiciona a FORWARD.
+
+**Ubicación en código:** Función `_reactive_step` en `Ruedas.py` (líneas 214-318).
+
+---
+
+## 10. Fuente de Control Configurable
+
+El comportamiento del robot puede cambiar modificando la variable `CONTROL_SOURCE` en Ruedas.py:
+
+- `"raw"` → Usa mediciones crudas de sensores frontales (comportamiento más reactivo, con oscilaciones)
+- `"filtered"` → Usa mediciones filtradas con EMA (comportamiento suavizado)
+- `"kalman"` → Usa estimación del filtro de Kalman (comportamiento más estable y predictivo)
+
+Cada ejecución se registra en un CSV diferente para permitir comparación.
+
+---
+
+## 11. Parámetros Configurables
+
+En `laboratorio_2/controllers/Ruedas/Ruedas.py` se encuentran los siguientes parámetros ajustables:
+
+```python
+CONTROL_SOURCE = "kalman"              # raw | filtered | kalman
+SAFE_DISTANCE_M = 0.17                 # Umbral de detección (metros)
+SIDE_DECISION_DEADBAND_M = 0.01        # Tolerancia para desempate lateral
+EMA_ALPHA = 0.25                       # Factor de suavizado del filtro EMA
+KALMAN_P0 = 0.05                       # Covarianza inicial del Kalman
+KALMAN_Q = 1e-4                        # Varianza del proceso
+KALMAN_R = 5e-3                        # Varianza de medición
+FORWARD_SPEED_FACTOR = 0.55            # Velocidad de avance
+TURN_SPEED_FACTOR = 0.35               # Velocidad de giro
+BACKUP_HOLD_STEPS = 17                 # Pasos de retroceso (0.85 s a 20 Hz)
+WHEEL_RADIUS_M = 0.0205                # Radio de la rueda
+AXLE_LENGTH_M = 0.0573                 # Distancia entre ejes
+```
+
+---
+
+## 12. Escenarios de Prueba
+
+Se han diseñado dos escenarios de prueba:
+
+**lab2_simple.wbt:** Ambiente con pocos obstáculos distribuidos en el espacio. Permite validar la navegación reactiva básica en condiciones controladas.
+
+**lab2_complex.wbt:** Ambiente con múltiples obstáculos, pasillos estrechos y geometrías más desafiantes. Permite validar la robustez en condiciones más realistas.
 
 En ambos escenarios se analiza:
+- Estabilidad del movimiento
+- Cantidad de giros innecesarios
+- Capacidad para evitar colisiones
+- Diferencias en comportamiento entre raw, filtered y kalman
 
-- estabilidad del movimiento,
-- cantidad de giros innecesarios,
-- capacidad para evitar colisiones,
-- diferencias entre mediciones crudas, filtradas y fusionadas.
+---
 
-## Resultados Lab 2
+## 13. Gráficos Generados
 
-Los gráficos que siguen corresponden al mapa simple (ventana 0–600 s).
+En la carpeta `Analisis/graficos/` se encuentran gráficos que muestran:
 
-1. Registro de señales crudas de sensores y encoders.
+1. Posiciones de encoders y velocidades comandadas en el tiempo
+2. Desplazamiento XY y orientación theta estimados por encoders
+3. Comparativa entre señales raw y filtradas (EMA)
+4. Estimación del filtro de Kalman superpuesta con raw y EMA
+5. Transiciones de estados de navegación (FORWARD, BACKUP, TURN)
+6. Lecturas de sensores laterales izquierdo y derecho
+7. Comparación de distancia frontal entre raw, filtered y kalman
+8. Órdenes de velocidad según la fuente de control utilizada
+9. Distribución de tiempo en cada estado para cada fuente
 
-   ![Encoders y comandos](Analisis/graficos/encoders_velocidades.png)
+---
 
-2. Estimación de avance del robot a partir de encoders.
+## 14. Instrucciones para Ejecutar
 
-   ![Desplazamiento y orientación](Analisis/graficos/desplazamiento_encoders.png)
+### Requisitos
 
-3. Filtro simple (EMA) y comparación con medición cruda.
+- Webots instalado (versión 2023 o superior)
+- Python 3.7+ 
+- Acceso a los archivos en `laboratorio_2/`
 
-   ![Comparativa filtros (ventana)](Analisis/graficos/comparativa_filtros.png)
+### Pasos
 
-4. Filtro de Kalman para estimar distancia frontal (señal fusionada).
+1. Abrir Webots desde terminal: `webots &`
 
-   ![Comparativa filtros (ventana, downsample)](Analisis/graficos/comparativa_filtros_full.png)
+2. Cargar un mundo: `File → Open World` y seleccionar:
+   - `laboratorio_2/worlds/lab2_simple.wbt` (recomendado para inicio)
+   - `laboratorio_2/worlds/lab2_complex.wbt`
 
-5. Navegación reactiva usando distancia estimada (Kalman).
+3. Configurar el controlador (opcional):
+   - Editar `laboratorio_2/controllers/Ruedas/Ruedas.py`
+   - Cambiar `CONTROL_SOURCE` si se desea (default = "kalman")
 
-   ![Estados de navegación](Analisis/graficos/estados_navegacion.png)
+4. Ejecutar: Click en botón Play en Webots
 
-6. Uso de sensores laterales para decidir el giro.
+5. Los datos se guardan automáticamente en `laboratorio_2/logs/` al finalizar
 
-   ![Sensores laterales](Analisis/graficos/sensores_laterales.png)
+### Analizar resultados
 
-7. Comparación de comportamiento usando raw/filtered/kalman.
+Los archivos CSV generados pueden analizarse con Python para generar gráficos y estadísticas (scripts de análisis pendiente de implementación).
 
-   ![Distancia frontal usada](Analisis/graficos/comparacion_front_used.png)
+---
 
-   ![Comandos de control](Analisis/graficos/comparacion_cmd.png)
+## Estado de Implementación
 
-   ![Distribución de estados](Analisis/graficos/comparacion_comportamiento.png)
+**Completado:**
+- Lectura de sensores de proximidad (8 sensores) y encoders (2 encoders)
+- Conversión de sensores a distancia en metros
+- Filtro EMA con parámetros configurables
+- Filtro de Kalman 1D con predicción y corrección
+- Máquina de estados de navegación reactiva (FORWARD, BACKUP, TURN)
+- Decisión de dirección de giro basada en sensores laterales
+- Registro de señales en CSV
+- Capacidad de comparar comportamiento con raw, filtered y kalman
+- Dos escenarios de prueba (simple y complejo)
+- Gráficos de resultados
+
+**Pendiente de implementación:**
+- Redacción completa de análisis y conclusiones
+- Script Python para generar gráficos automáticamente
+- Tabla comparativa de métricas cuantitativas (raw vs filtered vs kalman)
+- Análisis de sensibilidad del filtro Kalman (variación de Q y R)
+- Gráficos de covarianza del Kalman en el tiempo
+- Confirmación de nombres de integrantes
+
+---
+
+## Próximos Pasos
+
+1. Ejecutar simulaciones en ambos escenarios
+2. Registrar datos con las tres fuentes de control (raw, filtered, kalman)
+3. Analizar diferencias en comportamiento
+4. Redactar conclusiones sobre cuál fuente es más eficaz
+5. Validar parámetros del filtro Kalman
 
