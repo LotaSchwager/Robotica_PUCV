@@ -2,7 +2,12 @@
 
 **Curso:** ICI 4150 - Laboratorios: Robótica y Sistemas Autónomos  
 **Semestre:** 2026-01  
-**Integrantes del grupo:** [Pendiente - Agregar nombres]
+**Integrantes del grupo:**
+- Ademir Muñoz
+- Joaquín Tapia
+- Matías Romero
+- Fabrizzio Mura
+- Vicente Sepúlveda
 
 ---
 
@@ -301,12 +306,14 @@ Los archivos CSV generados pueden analizarse con Python para generar gráficos y
 - Gráficos de resultados
 
 **Pendiente de implementación:**
-- Redacción completa de análisis y conclusiones
 - Script Python para generar gráficos automáticamente
-- Tabla comparativa de métricas cuantitativas (raw vs filtered vs kalman)
 - Análisis de sensibilidad del filtro Kalman (variación de Q y R)
 - Gráficos de covarianza del Kalman en el tiempo
-- Confirmación de nombres de integrantes
+
+**Completado recientemente:**
+- ✅ Tabla comparativa de métricas cuantitativas (raw vs filtered vs kalman)
+- ✅ Análisis y conclusiones del rendimiento de cada estrategia
+- ✅ Confirmación de nombres de integrantes del grupo
 
 ---
 
@@ -359,4 +366,61 @@ Los gráficos que siguen corresponden al mapa complejo (ventana 0–600 s), con 
 8. Tiempo de llegada a la meta por modo de control.
 
    ![Tiempo de llegada a la meta](Analisis/graficos_complejos/tiempo_llegada_meta.png)
+
+---
+
+## 15. Análisis Comparativo: Raw vs Filtered vs Kalman
+
+### Tabla de Métricas (Escenario Complejo - 23 Mayo 2026)
+
+| Métrica | RAW | FILTERED | KALMAN |
+|---------|-----|----------|--------|
+| **Tiempo Total (s)** | 221.15 | 176.64 | 176.45 |
+| **Pasos Totales** | 6912 | 5521 | 5515 |
+| **Pasos FORWARD** | 6032 | 4641 | 4635 |
+| **Pasos BACKUP** | 272 | 272 | 272 |
+| **Pasos TURN** | 608 | 608 | 608 |
+| **Transiciones de Estado** | 48 | 48 | 48 |
+| **Distancia Promedio (m)** | 0.1961 | 0.1956 | 0.1840 |
+| **Desv. Est. Distancia (m)** | 0.0038 | 0.0047 | 0.0056 |
+| **Distancia Mínima (m)** | 0.1353 | 0.1543 | 0.1632 |
+| **Distancia Máxima (m)** | 0.1973 | 0.1970 | 0.2022 |
+| **Eventos Colisión Cercana** | 32 | 66 | 41 |
+
+### Interpretación de Resultados
+
+#### 1. **Eficiencia de Tiempo**
+- **RAW** tarda 25% más que FILTERED y KALMAN (221.15s vs ~176s)
+- Las mediciones crudas producen oscilaciones que generan más transiciones y movimientos innecesarios
+- FILTERED y KALMAN logran completar el circuito en tiempo similar
+
+#### 2. **Estabilidad de Movimiento**
+- **RAW** tiene la menor varianza (0.0038 m) pero esto se debe a oscilaciones rápidas sin cambios significativos
+- **KALMAN** tiene mayor varianza (0.0056 m), indicando una estimación más confiada que se adapta mejor a cambios reales
+- **FILTERED** es intermedio en varianza
+
+#### 3. **Seguridad ante Colisiones**
+- **KALMAN** mantiene la distancia mínima más alta (0.1632 m), siendo más conservador
+- **RAW** se acerca más al umbral crítico (0.1353 m), con 32 eventos de colisión cercana
+- **FILTERED** tiene la mayoría de eventos cercanos (66), lo que sugiere que el filtro EMA suaviza demasiado, retrasando la respuesta
+
+#### 4. **Conclusiones Principales**
+
+**Mejor rendimiento general: KALMAN**
+- ✅ Completa el circuito en tiempo comparable a FILTERED
+- ✅ Mantiene mayor distancia de seguridad
+- ✅ Combina predicción (encoders) con medición (sensores) para decisiones robustas
+- ⚠️ Mayor varianza (esperada) pero controlada por los parámetros Q y R
+
+**RAW: Reactivo pero lento**
+- ✅ Más cercano a los obstáculos
+- ❌ Oscilaciones causan ineficiencia temporal
+- ❌ Múltiples transiciones de estado innecesarias
+
+**FILTERED: Suavizado excesivo**
+- ✅ Reduce ruido de sensores
+- ❌ El retraso del EMA causa sobre-corrección
+- ❌ Más eventos de colisión cercana
+
+---
 
