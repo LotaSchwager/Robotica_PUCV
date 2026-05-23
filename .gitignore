@@ -8,6 +8,8 @@ Thumbs.db
 
 # CSV files
 *.csv
+# Backup files
+*.backup
 # El env de jupyter
 env/
 
