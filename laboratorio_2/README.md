@@ -318,3 +318,45 @@ Los archivos CSV generados pueden analizarse con Python para generar gráficos y
 4. Redactar conclusiones sobre cuál fuente es más eficaz
 5. Validar parámetros del filtro Kalman
 
+---
+
+## Resultados Lab 2 — Escenario Complejo
+
+Los gráficos que siguen corresponden al mapa complejo (ventana 0–600 s), con corridas que completan el circuito hasta la meta.
+
+1. Registro de señales crudas de sensores y encoders.
+
+   ![Encoders y comandos](Analisis/graficos_complejos/encoders_velocidades.png)
+
+2. Estimación de avance del robot a partir de encoders.
+
+   ![Desplazamiento y orientación](Analisis/graficos_complejos/desplazamiento_encoders.png)
+
+3. Filtro simple (EMA) y comparación con medición cruda.
+
+   ![Comparativa filtros (ventana)](Analisis/graficos_complejos/comparativa_filtros.png)
+
+4. Filtro de Kalman para estimar distancia frontal (señal fusionada).
+
+   ![Comparativa filtros (ventana, downsample)](Analisis/graficos_complejos/comparativa_filtros_full.png)
+
+5. Navegación reactiva usando distancia estimada (Kalman).
+
+   ![Estados de navegación](Analisis/graficos_complejos/estados_navegacion.png)
+
+6. Uso de sensores laterales para decidir el giro.
+
+   ![Sensores laterales](Analisis/graficos_complejos/sensores_laterales.png)
+
+7. Comparación de comportamiento usando raw/filtered/kalman.
+
+   ![Distancia frontal usada](Analisis/graficos_complejos/comparacion_front_used.png)
+
+   ![Comandos de control](Analisis/graficos_complejos/comparacion_cmd.png)
+
+   ![Distribución de estados](Analisis/graficos_complejos/comparacion_comportamiento.png)
+
+8. Tiempo de llegada a la meta por modo de control.
+
+   ![Tiempo de llegada a la meta](Analisis/graficos_complejos/tiempo_llegada_meta.png)
+

@@ -30,7 +30,7 @@ from robot import EpuckRobot
 #   - "raw": medición cruda (sensores frontales convertidos a metros)
 #   - "filtered": medición filtrada (EMA)
 #   - "kalman": estimación fusionada (Kalman)
-CONTROL_SOURCE = "kalman"  # raw | filtered | kalman
+CONTROL_SOURCE = "filtered"  # raw | filtered | kalman
 
 # Duración de la corrida. Usa None para correr hasta que detengas la simulación.
 RUN_SECONDS: Optional[float] = None
