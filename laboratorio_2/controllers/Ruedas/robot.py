@@ -22,7 +22,7 @@ class EpuckRobot:
         self.robot = Robot()
         self.timestep = int(self.robot.getBasicTimeStep())
 
-        # Parámetros geométricos (aprox. e-puck). Útiles para convertir encoders a desplazamiento.
+        # Parámetros geométricos útiles para convertir encoders a desplazamiento.
         self.wheel_radius_m = float(wheel_radius_m)
         self.axle_length_m = float(axle_length_m)
         
@@ -31,7 +31,7 @@ class EpuckRobot:
         self.proximity = ProximityController(self.robot, self.timestep)
         self.state = RobotState.STOPPED
 
-        # Estado interno para odometría incremental
+        # Estado interno para odometría
         self._prev_left_rad: Optional[float] = None
         self._prev_right_rad: Optional[float] = None
 
@@ -39,15 +39,7 @@ class EpuckRobot:
         return self.robot.step(self.timestep) != -1
 
     def encoder_increment(self):
-        """Compute encoder increments and derived motion since last call.
-
-        Returns:
-            (left_rad, right_rad, d_left_rad, d_right_rad, delta_s_m, delta_theta_rad)
-
-        Where:
-            delta_s_m: linear displacement estimate (meters)
-            delta_theta_rad: heading change estimate (radians)
-        """
+        
         left_rad, right_rad = self.wheels.get_positions()
         left_rad = float(left_rad)
         right_rad = float(right_rad)
@@ -77,20 +69,20 @@ class EpuckRobot:
         completamente y cambia su estado a STOPPED.
         """
         self.state = RobotState.RUNNING
-        # Obtenemos la medida inicial de los sensores de posición (encoders)
+        # Obtenemos la medida inicial de los sensores encoders
         start_left, start_right = self.wheels.get_positions()
         
         print(f"-> [ESTADO: {self.state.value}] Instrucción recibida: avanzar por {target_rads} pasos (radianes).")
         self.wheels.forward(speed_factor)
         
         while self.step():
-            # Condición de control: ¿Hay un obstáculo interrumpiendo el progreso?
+            # checkeo de si hay un obstaculo
             if self.proximity.is_obstacle_ahead(threshold=90.0):
                 print(f"¡Obstáculo, deteniéndose...")
                 self.stop()
                 return False  # Indica que no completó toda la distancia
                 
-            # ¿Cuántos pasos se ha dado?
+            # Cuántos pasos lleva
             curr_left, curr_right = self.wheels.get_positions()
             
             # Promediamos la distancia recorrida de ambas ruedas
@@ -99,14 +91,12 @@ class EpuckRobot:
             if dist_travelled >= target_rads:
                 print(f"Avance completado con éxito ({target_rads} pasos recorridos).")
                 self.stop()
-                return True # Indica que completó la distancia
+                return True # Llegó a la distancia
                 
         return False
     
     def backward_steps(self, target_rads, speed_factor=0.5):
-        """
-        Ordena mover el robot en línea recta hacia atrás por 'target_rads' pasos, ´para salir del bucle.
-        """
+        # en caso de encontrarse en un bucle retrocede para solucionar el problemaa (softlock)
         self.state = RobotState.RUNNING
         start_left, start_right = self.wheels.get_positions()
         
@@ -134,7 +124,7 @@ class EpuckRobot:
 
     def turn_steps(self, target_rads, direction='izquierda', speed_factor=0.5, check_obstacle=True):
         """
-        Gira en su propio eje cierta cantidad de pasos (radianes). 
+        Gira en su propio eje cierta cantidad de radianes. 
         También chequea obstáculos en pleno giro, a menos que check_obstacle sea False.
         """
         self.state = RobotState.OWN_TURN
@@ -160,7 +150,7 @@ class EpuckRobot:
                 
             curr_left, curr_right = self.wheels.get_positions()
             
-            # Al girar sobre su eje, un motor suma y el otro resta. Tomamos valor absoluto.
+            # Al girar sobre su eje, un motor suma y el otro resta.
             dist_travelled = (abs(curr_left - start_left) + abs(curr_right - start_right)) / 2.0
             
             if dist_travelled >= target_rads:
@@ -171,7 +161,6 @@ class EpuckRobot:
         return False
 
     def move_circle(self, radius_steps, speed_factor=0.5):
-        """Realiza un movimiento circular."""
         self.state = RobotState.CIRCLE
         print(f"-> [ESTADO: {self.state.value}] Realizando círculo.")
         self.wheels.curve_right(speed_factor)
@@ -186,10 +175,10 @@ class EpuckRobot:
         return True
 
     def rotate_random(self):
-        """Gira el robot para evadir un obstáculo, asegurando darle la espalda (quedar cara a cara a lo libre)."""
+        """Gira el robot para evadir un obstáculo, asegurando darle la espalda."""
         values = self.proximity.get_values()
         
-        # Sensor izquierdo: ps7 Sensor derecho: ps0.
+        # sensores frontales mas o menos diagonales
         left_val = values[7]
         right_val = values[0]
         
@@ -199,7 +188,7 @@ class EpuckRobot:
         else:
             direction = -1 # Girar a la izquierda
             
-        # Le damos un giro a la espalda del robot
+        # Giro a la espalda del robot
         angle = random.uniform(math.pi * 0.75, math.pi)
         
         # Asignamos la equivalencia del radian a movimiento de rueda del e-puck
@@ -213,7 +202,7 @@ class EpuckRobot:
         # check_obstacle=False para que no cancele este giro evasivo mientras sigue cerca de la pared.
         return self.turn_steps(wheel_turn_rads, direction, check_obstacle=False)
 
-    def rotar_tiempo(self, time_ms, speed_factor=0.33):
+    def rotar_tiempo(self, time_ms, speed_factor=0.40):
         pass
 
     def movimiento_cuadrado(self):

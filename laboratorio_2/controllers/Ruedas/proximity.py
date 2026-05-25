@@ -6,14 +6,8 @@ from typing import Iterable
 
 
 class ProximityController:
-    """Proximity/Distance sensors helper for the e-puck.
-
-    Lab 2 requires treating the front sensors as distance measurements (z_k).
-    Webots DistanceSensors expose a lookup table that maps distance->value;
-    we invert it (value->distance) to work in meters.
-    """
-
-    # El e-puck tiene 8 sensores de proximidad llamados 'ps0' a 'ps7'
+   
+    # El e-puck tiene 8 sensores de proximidad, 2 llamados 'ps0' a 'ps7'
     NUM_SENSORS = 8
 
     FRONT_SENSORS = (0, 7)
@@ -28,16 +22,12 @@ class ProximityController:
             sensor.enable(timestep)
             self.sensors.append(sensor)
 
-        # For each sensor: (sorted_values, sorted_distances)
         self._inv_tables = [
             self._build_inverse_lookup_table(sensor) for sensor in self.sensors
         ]
 
     def _build_inverse_lookup_table(self, sensor):
-        """Build a (value->distance) table from Webots lookup table.
-
-        Webots stores entries as triples: [distance, value, noise].
-        """
+        
         try:
             size = int(sensor.getLookupTableSize())
             table = list(sensor.getLookupTable())
@@ -53,7 +43,6 @@ class ProximityController:
             value = float(table[3 * i + 1])
             pairs.append((value, distance))
 
-        # Sort by value to allow fast inversion via bisect.
         pairs.sort(key=lambda t: t[0])
         values = [v for v, _ in pairs]
         distances = [d for _, d in pairs]
@@ -62,8 +51,6 @@ class ProximityController:
     def _value_to_distance(self, idx: int, value: float) -> float:
         table = self._inv_tables[idx]
         if table is None:
-            # Fallback monotonic mapping (raw proximity -> pseudo distance in meters).
-            # Used only if the lookup table is not available.
             v = max(0.0, min(float(value), 4096.0))
             d_min, d_max = 0.01, 0.20
             return d_min + (d_max - d_min) * (1.0 - v / 4096.0)
@@ -92,7 +79,7 @@ class ProximityController:
         return [float(sensor.getValue()) for sensor in self.sensors]
 
     def compute_distances_m(self, values: Iterable[float]) -> list[float]:
-        """Convert sensor values into distance estimates in meters."""
+        """Convertir mediciones de los sensores en distancias en metros."""
         vals = list(values)
         if len(vals) != self.NUM_SENSORS:
             raise ValueError(f"Expected {self.NUM_SENSORS} sensor values, got {len(vals)}")
@@ -102,7 +89,7 @@ class ProximityController:
         return self.compute_distances_m(self.get_values())
 
     def front_distance_m(self, distances_m: list[float]) -> float:
-        """Distance to the nearest obstacle in front (meters)."""
+        # Distancia en metros al obstáculo más cercano en el frente (entre ps0 y ps7).
         d0 = float(distances_m[self.FRONT_SENSORS[0]])
         d7 = float(distances_m[self.FRONT_SENSORS[1]])
         if math.isnan(d0):
@@ -112,7 +99,7 @@ class ProximityController:
         return min(d0, d7)
 
     def side_distances_m(self, distances_m: list[float]) -> tuple[float, float]:
-        """(left, right) side obstacle distances (meters)."""
+        """Distancia hacia derecha e izquierda (metros)."""
         left_candidates = [float(distances_m[i]) for i in self.LEFT_SIDE_SENSORS]
         right_candidates = [float(distances_m[i]) for i in self.RIGHT_SIDE_SENSORS]
 
@@ -122,12 +109,12 @@ class ProximityController:
 
     def side_proximity_values(self, values: list[float]) -> tuple[float, float]:
         """(left, right) side proximity in raw units (higher means closer)."""
+        # Proximidad derecha e izquierda (mayor es más cerca o mas próximo al reves que distancia).
         left = max(values[i] for i in self.LEFT_SIDE_SENSORS)
         right = max(values[i] for i in self.RIGHT_SIDE_SENSORS)
         return float(left), float(right)
 
     def is_obstacle_ahead(self, threshold: float = 80.0) -> bool:
-        """Raw-threshold obstacle detector (kept for Lab 1 compatibility)."""
         values = self.get_values()
         return values[0] > threshold or values[7] > threshold
 

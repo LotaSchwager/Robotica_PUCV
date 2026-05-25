@@ -1,35 +1,16 @@
-"""Controlador principal (Lab 2).
+# Laboratorio 2: Navegación reactiva con filtrado y fusión de sensores.
 
-Laboratorio 2: Navegación reactiva con filtrado y fusión de sensores.
-
-- Registra sensores crudos + encoders.
-- Aplica filtro simple (EMA) en distancia frontal.
-- Implementa filtro de Kalman (predicción con encoders + corrección con sensores frontales).
-- Usa la distancia frontal (raw/filtrada/Kalman) para decidir avanzar o girar.
-- Usa sensores laterales para decidir dirección del giro.
-"""
 
 from __future__ import annotations
-
 from dataclasses import dataclass
 from datetime import datetime
 import math
 from pathlib import Path
 from typing import Any, Optional
-
 from csv_logger import CsvLogger
 from estimation import ExponentialMovingAverage, Kalman1D
 from robot import EpuckRobot
 
-
-# =========================
-# Configuración del Lab 2
-# =========================
-
-# Fuente para la decisión de navegación reactiva:
-#   - "raw": medición cruda (sensores frontales convertidos a metros)
-#   - "filtered": medición filtrada (EMA)
-#   - "kalman": estimación fusionada (Kalman)
 CONTROL_SOURCE = "filtered"  # raw | filtered | kalman
 
 # Duración de la corrida. Usa None para correr hasta que detengas la simulación.
@@ -64,28 +45,29 @@ KALMAN_R = 5e-3
 WHEEL_RADIUS_M = 0.0205
 AXLE_LENGTH_M = 0.0573  # longitud entre ruedas aproximada usada en la geometría del giro
 
-# Giro fijo de 90° usando encoders (NO por tiempo).
-# TURN_WHEEL_TARGET_RAD indica cuántos radianes debe girar cada rueda
-# (en giro sobre su propio eje) para rotar el robot 90°.
+# Giro fijo de 90° con encoders.
+# TURN_WHEEL_TARGET_RAD = cuántos radianes debe girar cada rueda
+
 TURN_ANGLE_DEG = 90.0
 TURN_ANGLE_RAD = math.radians(TURN_ANGLE_DEG)
 TURN_WHEEL_TARGET_RAD = (AXLE_LENGTH_M / 2.0) * TURN_ANGLE_RAD / WHEEL_RADIUS_M
 
-# Compensación empírica (rad de rueda) para corregir el corte por tolerancia/discretización.
-# Si tu log muestra sistemáticamente errL/errR ~ 0.007rad y theta_est ~ 89.7°, sumar ~0.007
-# hace que el giro efectivo quede más cerca de 90°.
-#TURN_WHEEL_EXTRA_RAD = 0.007
-TURN_WHEEL_COMMAND_RAD = TURN_WHEEL_TARGET_RAD #+ TURN_WHEEL_EXTRA_RAD
+# Compensación para corregir por tolerancia debido a errL/errR de 0.007rad
+# Con esto nos acercamos mas a un giro de 90°.
+# TURN_WHEEL_EXTRA_RAD = 0.007
+# Se solucionó por lo que no fue necesario agregar esta compensación
+TURN_WHEEL_COMMAND_RAD = TURN_WHEEL_TARGET_RAD 
+#TURN_WHEEL_COMMAND_RAD = TURN_WHEEL_TARGET_RAD + TURN_WHEEL_EXTRA_RAD
 
-# Tolerancia (rad) para considerar que el motor llegó a su objetivo en modo posición.
+# Tolerancia para considerar que el motor llegó a su objetivo en modo posición.
 TURN_POSITION_TOLERANCE_RAD = 0.005 # Antes 0.01, ahora 0.005
 
-
+# Estados de navegación posibles del robot dependiendo de la situación 
 STATE_FORWARD = "FORWARD"
 STATE_BACKUP = "BACKUP"
 STATE_TURN = "TURN"
 
-
+#Clase del robot
 @dataclass
 class ReactiveNavState:
     state: str = STATE_FORWARD
@@ -100,7 +82,7 @@ class ReactiveNavState:
 
 
 def _logs_dir() -> Path:
-    # controllers/Ruedas/Ruedas.py -> laboratorio_2/
+    
     return Path(__file__).resolve().parents[2] / "logs"
 
 
@@ -162,12 +144,13 @@ def _decide_turn_direction(
     front_right_m: float,
     last_turn_dir: str,
 ) -> tuple[str, str, float]:
-    """Return (turn_dir, decision_basis, delta_side_m)."""
+    
     delta_side_m = float(side_left_m) - float(side_right_m)
-
+    # es posible que esta decisión de diseño del algoritmo proboque errores al 
+    # probocar giros incorrectos cuando se avanza muy en diagonal 
     if not math.isnan(side_left_m) and not math.isnan(side_right_m):
         if abs(delta_side_m) < SIDE_DECISION_DEADBAND_M:
-            # Desempate: usa front_left/front_right (si hay asimetría) o mantiene el último giro.
+            # Desempate: usa front_left/front_right o mantiene el último giro.
             if (
                 not math.isnan(front_left_m)
                 and not math.isnan(front_right_m)
@@ -178,13 +161,13 @@ def _decide_turn_direction(
                 return turn_dir, "front_tiebreak", delta_side_m
             if last_turn_dir in ("left", "right"):
                 return last_turn_dir, "hold", delta_side_m
-            # Último fallback para el primer empate: fija una dirección determinística.
+            
             return "right", "default", delta_side_m
 
         turn_dir = "left" if delta_side_m > 0.0 else "right"
         return turn_dir, "meters", delta_side_m
 
-    # Fallback: menor proximidad cruda => más espacio
+    # menor proximidad cruda => más espacio
     turn_dir = "left" if side_left_raw <= side_right_raw else "right"
     return turn_dir, "raw", delta_side_m
 
@@ -202,7 +185,7 @@ def _print_turn_decision(
     prev_turn_dir: str,
 ) -> None:
     print(
-        "[Lab2] Decisión de giro | "
+        "Decisión de giro | "
         f"front_used={front_used_m:.3f}m (umbral={SAFE_DISTANCE_M:.3f}m) | "
         f"side_left={side_left_m:.3f}m side_right={side_right_m:.3f}m | "
         f"delta_side={delta_side_m:+.3f}m (deadband={SIDE_DECISION_DEADBAND_M:.3f}m) | "
@@ -294,8 +277,9 @@ def _reactive_step(
         left_err = abs(float(enc_left_rad) - float(nav.turn_target_left_rad))
         right_err = abs(float(enc_right_rad) - float(nav.turn_target_right_rad))
         if left_err <= TURN_POSITION_TOLERANCE_RAD and right_err <= TURN_POSITION_TOLERANCE_RAD:
-            # Estimación del giro del robot usando encoders (radianes de orientación).
-            # En giro sobre su propio eje, el target esperado es ~±TURN_ANGLE_RAD (= ±1.5715 rad para 90°).
+            # Estimación del giro del robot usando encoders.
+            # En giro sobre su propio eje, el target esperado es ~±TURN_ANGLE_RAD 
+            # (= ±1.5715 rad para 90° rquivalente a pi/2).
             d_left = float(enc_left_rad) - nav.turn_start_left_rad
             d_right = float(enc_right_rad) - nav.turn_start_right_rad
             theta_est = math.nan
@@ -303,7 +287,7 @@ def _reactive_step(
                 theta_est = WHEEL_RADIUS_M * (d_right - d_left) / AXLE_LENGTH_M
 
             print(
-                "[Lab2] Fin giro | "
+                "Fin giro | "
                 f"dir={nav.turn_dir} | "
                 f"theta_est={theta_est:+.3f}rad ({math.degrees(theta_est):+.1f}°) | "
                 f"target_theta={TURN_ANGLE_RAD:+.3f}rad ({TURN_ANGLE_DEG:.0f}°) | "
@@ -437,11 +421,11 @@ def main() -> None:
     nav = ReactiveNavState()
 
     print(
-        "[Lab2] Iniciando navegación reactiva | "
+        "Iniciando navegación reactiva | "
         f"CONTROL_SOURCE={CONTROL_SOURCE} | RUN_SECONDS={RUN_SECONDS} | Ts={Ts:.3f}s (fs={fs:.1f}Hz) | "
         f"SAFE_DISTANCE_M={SAFE_DISTANCE_M:.3f}"
     )
-    print(f"[Lab2] Log CSV: {log_file}")
+    print(f"Log CSV: {log_file}")
 
     logger = None
     try:
@@ -465,7 +449,7 @@ def main() -> None:
             }
         )
     except Exception as e:
-        print(f"[Lab2] WARNING: no se pudo crear el log CSV ({type(e).__name__}: {e}).")
+        print(f"WARNING: no se pudo crear el log CSV ({type(e).__name__}: {e}).")
         logger = None
 
     try:
@@ -483,7 +467,7 @@ def main() -> None:
             side_left_m, side_right_m = robot.proximity.side_distances_m(distances_m)
             side_left_raw, side_right_raw = robot.proximity.side_proximity_values(ps)
 
-            # Filtro simple (EMA)
+            # Filtro simple(EMA)
             front_ema_m = float(ema.update(front_raw_m))
 
             # Encoders -> avance
@@ -564,7 +548,7 @@ def main() -> None:
             logger.close()
 
     robot.stop()
-    print(f"[Lab2] Fin. Muestras: {k} | Ts={Ts:.3f}s (fs={fs:.1f}Hz)")
+    print(f"Fin. Muestras: {k} | Ts={Ts:.3f}s (fs={fs:.1f}Hz)")
 
 
 if __name__ == "__main__":

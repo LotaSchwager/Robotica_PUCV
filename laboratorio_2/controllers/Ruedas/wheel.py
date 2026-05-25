@@ -36,11 +36,7 @@ class WheelController:
         self.right_motor.setVelocity(right)
 
     def set_position_targets(self, left_target_rad: float, right_target_rad: float, max_speed_rad_s: float) -> None:
-        """Control por posición: ordena a cada rueda alcanzar un ángulo absoluto.
-
-        Nota: En Webots, con setPosition() el signo de giro lo determina target-actual;
-        setVelocity() define la velocidad máxima (siempre positiva).
-        """
+        """Control por posición: ordena a cada rueda alcanzar un ángulo específico en radianes."""
         left_curr, right_curr = self.get_positions()
         left_target = float(left_target_rad)
         right_target = float(right_target_rad)

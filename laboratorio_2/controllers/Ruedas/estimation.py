@@ -6,10 +6,7 @@ from typing import Optional
 
 @dataclass
 class ExponentialMovingAverage:
-    """Simple low-pass filter (EMA).
-
-    y_k = alpha * x_k + (1 - alpha) * y_{k-1}
-    """
+    
 
     alpha: float
     value: Optional[float] = None
@@ -25,16 +22,7 @@ class ExponentialMovingAverage:
 
 @dataclass
 class Kalman1D:
-    """Scalar Kalman filter for a 1D state.
-
-    State: x (e.g., front distance to nearest obstacle)
-
-    Model:
-      x_k = x_{k-1} + u_k + w_k,   w_k ~ N(0, Q)
-      z_k = x_k + v_k,            v_k ~ N(0, R)
-
-    Where u_k comes from encoders (prediction input).
-    """
+    
 
     x: float
     P: float
@@ -55,7 +43,7 @@ class Kalman1D:
             # Degenerate; skip update.
             return float(self.x)
 
-        # Kalman gain
+        # Ganancia de Kalman 
         K = float(self.P) / S
 
         # State update
