@@ -38,8 +38,8 @@ WorldInfo {
   ]
 }
 Viewpoint {
-  orientation 0.5241287602818507 0.49575397759280854 -0.6924716863138299 1.9548468106886905
-  position 0.20984233462696222 2.0749271765107036 7.656774927897567
+  orientation 0.3961099463303879 0.8254832195292213 -0.40208750875127747 1.7107288200554072
+  position -0.5177744365968564 -0.2786057062482379 3.527834319725892
 }
 TexturedBackground {
 }
@@ -299,6 +299,24 @@ Solid {
     }
   ]
   name "obs_3_6"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation -1.375 -0.125 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_3_6(3)"
   boundingObject Box {
     size 0.25 0.25 0.12
   }
@@ -826,24 +844,6 @@ Solid {
   }
 }
 Solid {
-  translation 0.875 -0.625 0.06
-  children [
-    Shape {
-      appearance PBRAppearance {
-        baseColor 0.55 0.55 0.55
-        roughness 0.8
-      }
-      geometry Box {
-        size 0.25 0.25 0.12
-      }
-    }
-  ]
-  name "obs_9_3"
-  boundingObject Box {
-    size 0.25 0.25 0.12
-  }
-}
-Solid {
   translation 0.875 -0.375 0.06
   children [
     Shape {
@@ -857,6 +857,24 @@ Solid {
     }
   ]
   name "obs_9_4"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation 0.875 -0.745 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_9_4(1)"
   boundingObject Box {
     size 0.25 0.25 0.12
   }
@@ -1042,7 +1060,7 @@ E-puck {
 OilBarrel {
   translation 1.19 -1.19 0.05
   height 0.1
-  radius 0.3
+  radius 0.28
 }
 OilBarrel {
   translation -1.14 1.14 0.05
