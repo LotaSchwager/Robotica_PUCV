@@ -73,5 +73,12 @@ class EpuckRobot:
         """Retorna la pose estimada por odometría: (x_m, y_m, theta_rad)."""
         return self.odometry.pose()
 
+    def set_pose(self, x: float, y: float, theta: float) -> None:
+        """
+        Reinicia la pose odométrica.  Útil cuando la pose inicial depende del
+        escenario y se conoce después de construir el robot (getWorldPath).
+        """
+        self.odometry = Odometry(x=float(x), y=float(y), theta=float(theta))
+
     def stop(self) -> None:
         self.wheels.stop()

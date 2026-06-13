@@ -1,7 +1,8 @@
-# Laboratorio 2: Navegación Reactiva con Filtrado y Fusión de Sensores en Webots
+# Proyecto Final: Navegación Autónoma con Planificación de Rutas (A*) en Webots
 
-**Curso:** ICI 4150 - Laboratorios: Robótica y Sistemas Autónomos
+**Curso:** ICI 4150 - Robótica y Sistemas Autónomos
 **Semestre:** 2026-01
+**Línea seleccionada:** Línea A — Planificación de rutas (A* sobre grilla de ocupación)
 **Integrantes del grupo:**
 - Ademir Muñoz
 - Joaquín Tapia
@@ -9,206 +10,163 @@
 - Fabrizzio Mura
 - Vicente Sepúlveda
 
-## 1. Objetivo del Trabajo
+---
 
-Implementar un sistema de navegación reactiva en Webots para un robot móvil diferencial. El sistema utiliza sensores de distancia y encoders de rueda, aplicando técnicas de filtrado y fusión sensorial mediante un filtro de Kalman para estimar la distancia frontal a obstáculos de forma más robusta. Se compara el comportamiento del robot usando tres fuentes de información: mediciones crudas, mediciones filtradas y estimación fusionada.
+## 1. Objetivo del Proyecto
 
-## 2. Descripción del Robot y Sensores Utilizados
+Diseñar, implementar y evaluar en Webots un sistema de navegación autónoma para un robot móvil diferencial (e-puck), capaz de desplazarse desde una posición inicial hasta una meta dentro de un entorno con obstáculos. El sistema integra el control cinemático diferencial del Laboratorio 1 y la percepción sensorial, filtrado y estimación del Laboratorio 2, agregando una capa de **navegación global**: el entorno se representa como una grilla de ocupación 2D y la ruta se calcula con el algoritmo **A\***, que luego el robot ejecuta siguiendo waypoints, con evasión reactiva de obstáculos como capa de seguridad.
 
-Se utiliza el robot e-puck de Webots, un robot móvil diferencial con dos ruedas motorizadas independientes.
+## 2. Descripción del Robot, Sensores y Actuadores
 
-### Sensores de Proximidad/Distancia
+Se utiliza el robot **e-puck** de Webots, un robot móvil diferencial.
 
-El e-puck tiene 8 sensores de proximidad denominados ps0 a ps7. En este laboratorio se utilizan:
+| Componente | Uso en el proyecto |
+|---|---|
+| 2 motores de rueda (actuadores) | Control diferencial: avance, giros y seguimiento de waypoints. Velocidad máxima 6.28 rad/s |
+| 2 encoders de rueda | Odometría: estimación de pose (x, y, θ) integrando los incrementos de cada rueda |
+| 8 sensores de proximidad IR (ps0–ps7) | Detección de obstáculos. Frontales (ps0, ps7) para la capa reactiva; laterales (ps1, ps2, ps5, ps6) para decidir dirección de giro |
 
-- **Sensores frontales:** ps0 (frente derecha) y ps7 (frente izquierda). Se toma el mínimo para obtener la distancia frontal al obstáculo más cercano.
-- **Sensores laterales derechos:** ps1 y ps2. Se utilizan para decidir la dirección del giro.
-- **Sensores laterales izquierdos:** ps5 y ps6. Se utilizan para decidir la dirección del giro.
+Parámetros geométricos: radio de rueda r = 0.0205 m, distancia entre ruedas L = 0.0573 m. Los valores crudos de los sensores IR se convierten a metros mediante la tabla de lookup inversa de Webots (interpolación lineal). El paso de simulación es Ts = 0.05 s (fs = 20 Hz).
 
-Los sensores proporcionan valores crudos que se convierten a distancia en metros utilizando una tabla de lookup inversa de Webots (interpolación lineal mediante bisect).
+## 3. Escenarios de Prueba
 
-### Encoders de Rueda
+Ambos escenarios definen una **marca verde** (posición inicial) y una **marca roja** (meta) en el piso de la arena.
 
-El robot dispone de dos encoders que miden el desplazamiento angular en radianes de cada rueda. Estos se utilizan para estimar el movimiento incremental del robot entre dos instantes consecutivos. El desplazamiento lineal se calcula como s = r × θ, donde r = 0.0205 m es el radio de la rueda.
+- **`worlds/lab2_simple.wbt` (escenario simple):** arena de 1×1 m con dos muros que fuerzan una ruta en forma de "S" entre el inicio (-0.35, 0.35) y la meta (0.35, -0.35). Pocos obstáculos y ruta relativamente directa.
+- **`worlds/lab2_complex.wbt` (escenario complejo):** arena de 2×2 m con un laberinto de ~25 muros que forman pasillos estrechos (~0.24 m), curvas y rutas alternativas. Inicio en (-0.9, 0.9) y meta en (0.9, -0.9), esquinas opuestas del laberinto.
 
-## 3. Frecuencia de Muestreo
+> **Nota de mantención:** los mundos están en proceso de rediseño para ajustarse mejor al enunciado. La grilla de ocupación **no requiere actualización manual** al cambiar un mundo: se genera automáticamente parseando el archivo `.wbt` (ver sección 4.1). Lo único que debe actualizarse al cambiar un mapa son las entradas del diccionario `SCENARIOS` en `controllers/Ruedas/Ruedas.py` (pose inicial y meta de cada mundo), haciéndolas coincidir con las marcas verde/roja y la pose del e-puck en el `.wbt`.
 
-La simulación en Webots ejecuta el controlador con un paso de tiempo fijo de Ts = 0.05 s, lo que corresponde a una frecuencia de muestreo fs = 20 Hz. Las pruebas tienen una duración típica de 600 a 1200 segundos de simulación. Todas las señales registradas, filtradas y estimadas se analizan con esta misma frecuencia.
+## 4. Algoritmo Implementado
 
-## 4. Análisis de Señales Registradas
+### 4.1. Representación del entorno: grilla de ocupación precargada
 
-Durante la simulación se registran continuamente los valores crudos de los sensores de proximidad, posiciones angulares de los encoders, velocidades comandadas a los motores, distancias convertidas a metros y señales filtradas y estimadas.
+Los archivos de mundo de Webots (`.wbt`) son texto plano en formato VRML. El módulo `world_map.py` los parsea directamente: extrae el tamaño de la arena (`RectangleArena.floorSize`) y cada obstáculo (`Solid` con geometría Box: posición, rotación en Z y dimensiones), y construye una **grilla de ocupación 2D** (`occupancy_grid.py`) donde cada celda de 0.05 m se marca como libre u ocupada. Los muros se rasterizan como rectángulos rotados y se les aplica una **inflación de 0.06 m** (mayor que el radio del e-puck, 0.037 m) para que el planificador mantenga distancia de seguridad. Los bordes de la arena también se marcan como ocupados.
 
-Los archivos se guardan como CSV en la carpeta `laboratorio_2/logs/` con los siguientes nombres:
-- `lab2_raw_*.csv` para mediciones crudas
-- `lab2_filtered_*.csv` para mediciones filtradas
-- `lab2_kalman_*.csv` para estimación Kalman
+El controlador detecta qué mundo está corriendo mediante `robot.getWorldPath()` y selecciona automáticamente el escenario (inicio/meta) y el mapa correspondiente.
 
-Cada archivo contiene columnas para tiempo, estado, lecturas sensoriales, velocidades comandadas y las tres versiones de la distancia frontal.
+### 4.2. Planificación: A* sobre la grilla
 
-## 5. Estimación del Avance Mediante Encoders
+`path_planner.py` implementa **A\*** con conectividad 8 (movimientos ortogonales y diagonales):
 
-El movimiento del robot se estima a partir de los encoders usando las siguientes fórmulas.
+- Costo real: 1 celda ortogonal = 0.05 m; diagonal = 0.05·√2 m.
+- Heurística: distancia euclídea a la meta (admisible y consistente → ruta óptima).
+- Las diagonales se bloquean si alguno de los vecinos ortogonales adyacentes está ocupado (evita cortar esquinas de muros).
+- Si el inicio o la meta caen en zona inflada, se busca la celda libre más cercana (BFS).
+- La ruta resultante se simplifica eliminando waypoints colineales.
 
-El desplazamiento lineal es delta_s = r × (d_left + d_right) / 2, donde r = 0.0205 m y d_left, d_right son los cambios angulares de cada rueda.
+Cada ruta planificada se guarda en `logs/` como `final_route_*.csv` (waypoints) y `final_map_*.txt` (mapa ASCII con la ruta superpuesta), para el análisis posterior.
 
-El desplazamiento angular es delta_theta = r × (d_right - d_left) / axle_length, donde axle_length = 0.0573 m es la distancia entre ejes.
+### 4.3. Ejecución de la ruta: seguimiento de waypoints
 
-El desplazamiento lineal delta_s se utiliza como entrada de predicción en el filtro de Kalman. Si el robot avanza delta_s metros, la distancia frontal debería disminuir en delta_s metros.
+El robot convierte la ruta en comandos de movimiento con un **control proporcional** tipo uniciclo (`_waypoint_step` en `Ruedas.py`): calcula el error de orientación hacia el waypoint actual, comanda velocidad angular ω = Kp·e_θ (Kp = 2.5) y reduce la velocidad lineal cuando el error de orientación es grande o el waypoint está cerca. Un waypoint se considera alcanzado a menos de 0.08 m.
 
-## 6. Filtro Simple Aplicado
+### 4.4. Capa reactiva de seguridad
 
-Se implementa un filtro de promedio móvil exponencial (EMA) sobre las mediciones frontales de distancia. La ecuación es y_k = α × x_k + (1 - α) × y_{k-1}, donde y_k es la salida filtrada, x_k es la medición cruda y α = 0.25 es el factor de suavizado.
+Si la distancia frontal (estimada con el **filtro de Kalman 1D** del Lab 2) cae bajo 0.17 m, la capa reactiva interrumpe el seguimiento: el robot retrocede (BACKUP), gira 90° hacia el lado más libre según los sensores laterales (TURN, con control por posición de encoders) y luego **reanuda el seguimiento de waypoints**. Esto protege contra desviaciones odométricas y obstáculos no modelados.
 
-Con α = 0.25, el filtro retiene el 75% del valor anterior y añade el 25% de la medición actual. Esto reduce el ruido pero introduce un pequeño retraso en la respuesta.
+### 4.5. Pseudocódigo de la solución
 
-La clase `ExponentialMovingAverage` en `estimation.py` (líneas 8-23) implementa este filtro.
+```
+INICIO
+  mundo  ← getWorldPath()                       # mundo cargado en Webots
+  (inicio, meta) ← SCENARIOS[mundo]
+  grilla ← parsear .wbt y rasterizar obstáculos (+ inflación)
+  ruta   ← A*(grilla, inicio, meta)             # lista de waypoints
+  guardar ruta y mapa en logs/
 
-## 7. Implementación del Filtro de Kalman
+  MIENTRAS simulación activa:
+    leer sensores IR y encoders
+    actualizar odometría (x, y, θ)              # ecuaciones del Lab 1
+    d_frontal ← Kalman1D(predicción encoders, medición IR)   # Lab 2
 
-Se implementa un filtro de Kalman escalar (1D) que fusiona información del movimiento del robot (predicción por encoders) con mediciones directas de sensores (corrección).
+    SI d_frontal < 0.17 m:                      # capa reactiva
+      retroceder → girar 90° al lado más libre → reanudar ruta
+    SINO:
+      seguir waypoint actual (control proporcional)
+      SI waypoint alcanzado: avanzar al siguiente
 
-El modelo matemático define el estado como x_k = x_{k-1} + u_k + w_k, donde w_k ~ N(0, Q), y la medición como z_k = x_k + v_k, donde v_k ~ N(0, R).
+    SI último waypoint alcanzado:
+      detener robot → META ALCANZADA
+    registrar paso en CSV (pose, sensores, fase, comandos)
+FIN
+```
 
-En este contexto, x_k es la distancia frontal estimada, u_k es el cambio de distancia predicho por encoders, z_k es la lectura del sensor frontal, Q = 1e-4 es la varianza del proceso y R = 5e-3 es la varianza de medición.
+> El controlador conserva además un **modo alternativo de mapeo autónomo** (`USE_PRELOADED_MAP = False`): el robot explora reactivamente construyendo la grilla con sus sensores (ray-casting de Bresenham), vuelve al inicio y recién entonces planifica con A*. Se mantiene como extensión comparativa de la estrategia elegida.
 
-La clase `Kalman1D` en `estimation.py` (líneas 27-69) implementa este filtro.
+## 5. Relación con los Laboratorios 1 y 2
 
-## 8. Etapas del Filtro de Kalman: Predicción y Corrección
+| Laboratorio | Qué se reutiliza | Dónde |
+|---|---|---|
+| **Lab 1** — control cinemático | Modelo diferencial (v = r(ωr+ωl)/2, ω = r(ωr−ωl)/L), avance, giros por posición de encoders | `wheel.py`, capa reactiva y waypoint follower en `Ruedas.py` |
+| **Lab 1** — odometría | Ecuaciones (5)–(7) del enunciado: integración de Δs y Δφ para estimar (x, y, θ) | `estimation.py` (clase `Odometry`), `robot.py` |
+| **Lab 2** — percepción | Lectura de los 8 sensores IR y conversión cruda → metros por lookup table | `proximity.py` |
+| **Lab 2** — filtrado y fusión | EMA (α = 0.25) y **Kalman 1D** (predicción por encoders + corrección por sensor IR, Q = 1e-4, R = 5e-3) sobre la distancia frontal | `estimation.py` |
+| **Lab 2** — navegación reactiva | Máquina de estados FORWARD/BACKUP/TURN con decisión de giro por sensores laterales | `_reactive_step` en `Ruedas.py` |
 
-El filtro de Kalman ejecuta dos etapas en cada iteración.
+El proyecto **extiende** estos aprendizajes con la navegación global: la odometría del Lab 1 deja de ser solo registro y pasa a alimentar el seguimiento de ruta; el Kalman del Lab 2 deja de controlar directamente y pasa a ser la capa de seguridad bajo un plan calculado por A*.
 
-En la etapa de predicción, se estima la nueva distancia frontal basándose en cuánto se ha movido el robot: x_pred = x_anterior + u, P_pred = P_anterior + Q. Si delta_s_m = 0.05 m, entonces u = -0.05 m.
+## 6. Instrucciones para Ejecutar
 
-En la etapa de corrección, se ajusta la predicción anterior usando una medición real. Se calcula la innovacion = z - x_pred, la ganancia = P_pred / (P_pred + R), y finalmente x_nuevo = x_pred + ganancia × innovacion, P_nuevo = (1 - ganancia) × P_pred.
+Requisitos: Webots R2023 o superior (probado con R2025a) y Python 3.10+.
 
-La ganancia de Kalman determina cuánto confiar en la medición versus la predicción. Si R es grande (sensor ruidoso), la ganancia tiende a 0 y confía más en la predicción. Si R es pequeño (sensor preciso), la ganancia tiende a 1 y confía más en la medición. Si P_pred es grande (incertidumbre alta), la ganancia aumenta y confía más en la medición.
-
-El resultado es una estimación más estable que cualquiera de las dos fuentes por separado.
-
-## 9. Lógica de Navegación Reactiva Implementada
-
-El robot implementa una máquina de estados con tres estados: FORWARD, BACKUP y TURN.
-
-En el estado FORWARD, el robot avanza a velocidad 0.55 × MAX_SPEED (3.44 rad/s) mientras la distancia frontal sea mayor que 0.17 m. Si la distancia es menor, transiciona a BACKUP.
-
-En el estado BACKUP, cuando se detecta un obstáculo, el robot retrocede a velocidad 0.45 × MAX_SPEED durante 17 pasos (0.85 segundos) para proporcionar espacio antes de girar.
-
-En el estado TURN, el robot gira 90° sobre su propio eje utilizando control por posición de los encoders. La dirección del giro se decide según los sensores laterales. Si delta_side = side_left - side_right y |delta_side| < 0.01 m, el robot gira hacia el lado más libre. Si los lados son similares, usa sensores frontales para desempate. Una vez completado el giro (tolerancia de 0.005 rad), transiciona a FORWARD.
-
-La función `_reactive_step` en `Ruedas.py` (líneas 214-318) implementa esta lógica.
-
-## 10. Fuente de Control Configurable
-
-El comportamiento del robot puede cambiar modificando la variable CONTROL_SOURCE en Ruedas.py:
-
-"raw" usa mediciones crudas de sensores frontales, lo que produce un comportamiento más reactivo pero con oscilaciones. "filtered" usa mediciones filtradas con EMA, produciendo un comportamiento suavizado. "kalman" usa estimación del filtro de Kalman, lo que resulta en un comportamiento más estable y predictivo.
-
-Cada ejecución se registra en un CSV diferente para permitir la comparación entre las tres estrategias.
-
-## 11. Parámetros Configurables
-
-En `laboratorio_2/controllers/Ruedas/Ruedas.py` se encuentran los siguientes parámetros ajustables:
-
-CONTROL_SOURCE define la fuente de control (raw, filtered o kalman). SAFE_DISTANCE_M = 0.17 m es el umbral de detección de obstáculos. SIDE_DECISION_DEADBAND_M = 0.01 m es la tolerancia para el desempate lateral. EMA_ALPHA = 0.25 es el factor de suavizado del filtro. KALMAN_P0 = 0.05 es la covarianza inicial, KALMAN_Q = 1e-4 es la varianza del proceso y KALMAN_R = 5e-3 es la varianza de medición.
-
-FORWARD_SPEED_FACTOR = 0.55 define la velocidad de avance. TURN_SPEED_FACTOR = 0.35 define la velocidad de giro. BACKUP_HOLD_STEPS = 17 pasos corresponden a 0.85 segundos a 20 Hz. WHEEL_RADIUS_M = 0.0205 m y AXLE_LENGTH_M = 0.0573 m son parámetros geométricos del robot.
-
-## 12. Escenarios de Prueba
-
-Se han diseñado dos escenarios de prueba. lab2_simple.wbt es un ambiente con pocos obstáculos distribuidos en el espacio que permite validar la navegación reactiva básica en condiciones controladas. lab2_complex.wbt es un ambiente con múltiples obstáculos, pasillos estrechos y geometrías más desafiantes que valida la robustez en condiciones más realistas.
-
-En ambos escenarios se analiza la estabilidad del movimiento, la cantidad de giros innecesarios, la capacidad para evitar colisiones y las diferencias en comportamiento entre las tres estrategias.
-
-## 13. Gráficos Generados
-
-En la carpeta `Analisis/graficos/` se encuentran gráficos que muestran posiciones de encoders, velocidades comandadas, desplazamiento estimado, comparativas entre señales raw y filtradas, estimación del filtro de Kalman, transiciones de estados de navegación, lecturas de sensores laterales, comparación de distancia frontal entre las tres estrategias, órdenes de velocidad y distribución de tiempo en cada estado.
-
-## 14. Instrucciones para Ejecutar
-
-### Requisitos
-
-Para ejecutar las simulaciones se necesita Webots instalado (versión 2023 o superior) y Python 3.7 en adelante.
-
-### Pasos
-
-1. Abrir Webots desde terminal ejecutando `webots &`
-
-2. Cargar un mundo desde el menú File → Open World y seleccionar lab2_simple.wbt o lab2_complex.wbt
-
-3. Opcionalmente, editar `laboratorio_2/controllers/Ruedas/Ruedas.py` para cambiar CONTROL_SOURCE (el valor predeterminado es "kalman")
-
-4. Ejecutar haciendo clic en el botón Play en Webots
-
-5. Los datos se guardan automáticamente en `laboratorio_2/logs/` al finalizar la simulación
-
-Los archivos CSV generados pueden analizarse con Python para generar gráficos y estadísticas comparativas.
-
-## Estado de Implementación
-
-Se han completado todos los componentes principales del laboratorio:
-- Lectura de sensores de proximidad y encoders
-- Conversión de mediciones crudas a distancia en metros
-- Filtro EMA con parámetros configurables
-- Filtro de Kalman 1D con predicción y corrección
-- Máquina de estados de navegación reactiva con tres estados
-- Decisión de dirección de giro basada en sensores laterales
-- Registro automático de señales en CSV
-- Comparación de comportamiento con tres fuentes de control
-- Dos escenarios de prueba (simple y complejo)
-- Gráficos de resultados y análisis comparativo de rendimiento
-
-## Resultados Lab 2 - Escenario Complejo
-
-Los siguientes gráficos corresponden al escenario complejo, registrando simulaciones que completan el circuito hasta la meta.
-
-Se muestran el registro de señales crudas de sensores y encoders, la estimación de avance a partir de encoders, la comparación entre el filtro EMA y las mediciones crudas, la estimación del filtro de Kalman superpuesta con raw y EMA, las transiciones de estados de navegación, el uso de sensores laterales para decidir la dirección de giro, la comparación de comportamiento entre las tres estrategias, y el tiempo de llegada a la meta para cada modo de control.
-
-![Encoders y comandos](Analisis/graficos_complejos/encoders_velocidades.png)
-
-![Desplazamiento y orientación](Analisis/graficos_complejos/desplazamiento_encoders.png)
-
-![Comparativa filtros](Analisis/graficos_complejos/comparativa_filtros.png)
-
-![Comparativa filtros full](Analisis/graficos_complejos/comparativa_filtros_full.png)
-
-![Estados de navegación](Analisis/graficos_complejos/estados_navegacion.png)
-
-![Sensores laterales](Analisis/graficos_complejos/sensores_laterales.png)
-
-![Distancia frontal usada](Analisis/graficos_complejos/comparacion_front_used.png)
-
-![Comandos de control](Analisis/graficos_complejos/comparacion_cmd.png)
-
-![Distribución de estados](Analisis/graficos_complejos/comparacion_comportamiento.png)
-
-![Tiempo de llegada a la meta](Analisis/graficos_complejos/tiempo_llegada_meta.png)
-
-## 15. Análisis Comparativo: Raw vs Filtered vs Kalman
-
-### Tabla de Métricas (Escenario Complejo)
-
-| Métrica | RAW | FILTERED | KALMAN |
-|---------|-----|----------|--------|
-| Tiempo Total (s) | 221.15 | 176.64 | 176.45 |
-| Pasos Totales | 6912 | 5521 | 5515 |
-| Pasos FORWARD | 6032 | 4641 | 4635 |
-| Pasos BACKUP | 272 | 272 | 272 |
-| Pasos TURN | 608 | 608 | 608 |
-| Transiciones de Estado | 48 | 48 | 48 |
-| Distancia Promedio (m) | 0.1961 | 0.1956 | 0.1840 |
-| Desv. Est. Distancia (m) | 0.0038 | 0.0047 | 0.0056 |
-| Distancia Mínima (m) | 0.1353 | 0.1543 | 0.1632 |
-| Distancia Máxima (m) | 0.1973 | 0.1970 | 0.2022 |
-| Eventos Colisión Cercana | 32 | 66 | 41 |
-
-### Interpretación de Resultados
-
-En cuanto a la eficiencia de tiempo, RAW tarda 25% más que FILTERED y KALMAN. Las mediciones crudas producen oscilaciones que generan más transiciones y movimientos innecesarios, mientras que FILTERED y KALMAN logran completar el circuito en tiempo similar.
-
-Respecto a la estabilidad del movimiento, RAW tiene la menor varianza pero esto se debe a oscilaciones rápidas sin cambios significativos. KALMAN tiene mayor varianza, indicando una estimación más confiada que se adapta mejor a cambios reales. FILTERED es intermedio en varianza.
-
-En cuanto a la seguridad ante colisiones, KALMAN mantiene la distancia mínima más alta (0.1632 m), siendo más conservador. RAW se acerca más al umbral crítico (0.1353 m) con 32 eventos de colisión cercana. FILTERED tiene la mayoría de eventos cercanos (66), sugiriendo que el filtro EMA suaviza demasiado y retarda la respuesta.
-
-El análisis general muestra que KALMAN completa el circuito en tiempo comparable a FILTERED, mantiene mayor distancia de seguridad y combina predicción con medición para decisiones robustas. RAW es más reactivo pero las oscilaciones causan ineficiencia temporal y múltiples transiciones innecesarias. FILTERED reduce el ruido pero el retraso del EMA causa sobre-corrección y más eventos de colisión cercana.
-
+1. Abrir Webots y cargar `laboratorio_final/worlds/lab2_simple.wbt` o `lab2_complex.wbt` (File → Open World).
+2. Presionar Play. El controlador detecta el mundo automáticamente: no hay que editar nada entre escenarios.
+3. La consola muestra el mapa cargado, la ruta planificada y las transiciones de fase; al llegar imprime `META ALCANZADA` con pose, error y tiempo.
+4. Al finalizar quedan en `laboratorio_final/logs/`:
+   - `final_<modo>_<fecha>.csv` — registro completo paso a paso (pose, sensores, filtros, comandos, fase).
+   - `final_route_meta_<fecha>.csv` — waypoints de la ruta planificada.
+   - `final_map_meta_<fecha>.txt` — mapa ASCII con la ruta superpuesta.
+
+Parámetros relevantes en `controllers/Ruedas/Ruedas.py`: `USE_PRELOADED_MAP` (Línea A vs mapeo autónomo), `CONTROL_SOURCE` (raw/filtered/kalman para la capa reactiva), `GRID_CELL_M`, `GRID_INFLATION_M`, `SAFE_DISTANCE_M`, y el diccionario `SCENARIOS` (inicio/meta por mundo).
+
+## 7. Resultados y Métricas de Desempeño
+
+> **Pendiente:** esta sección se completará con las corridas experimentales en ambos escenarios una vez finalizado el rediseño de los mapas.
+
+Métricas a reportar por escenario (mínimo 5 corridas):
+
+- Tiempo total hasta llegar a la meta.
+- Longitud de la ruta planificada vs longitud de la trayectoria ejecutada (odometría) y diferencia entre ambas.
+- Gráfico de ruta planificada vs trayectoria real sobre el mapa.
+- Número de colisiones o casi-colisiones (distancia frontal < umbral).
+- Número de activaciones de la capa reactiva (giros no planificados).
+- Error de posición final (odometría vs marca de meta).
+- Porcentaje de ejecuciones exitosas.
+
+Validación offline ya realizada (sin simulación): el parser de mundos y A* encuentran ruta en ambos escenarios — simple: 11 waypoints, 1.47 m planificados; complejo: 18 waypoints atravesando el laberinto.
+
+## 8. Evidencias
+
+> **Pendiente:** capturas de ambos escenarios, gráficos de análisis y enlace al video demostrativo (ejecución en Webots mostrando la ruta seguida y la llegada a la meta en ambos escenarios).
+
+## 9. Conclusiones, Limitaciones y Posibles Mejoras
+
+> **Pendiente de resultados experimentales.** Limitaciones ya identificadas en el diseño:
+
+- La pose del robot proviene solo de odometría: el error se acumula con la distancia recorrida y en rutas largas puede desviar el seguimiento de waypoints (sin corrección global tipo GPS/landmarks).
+- En pasillos estrechos (~0.24 m del escenario complejo) el umbral reactivo `SAFE_DISTANCE_M = 0.17` puede activar giros innecesarios; es el primer parámetro a calibrar experimentalmente.
+- La inflación fija (0.06 m) es un compromiso: valores mayores dan más seguridad pero pueden cerrar pasillos estrechos en la grilla.
+- Mejoras posibles: replanificación A* cuando la capa reactiva desvía al robot de la ruta, suavizado de trayectoria (línea de visión entre waypoints), y fusión de la odometría con mediciones absolutas.
+
+## 10. Estructura del Repositorio
+
+```
+laboratorio_final/
+├── README.md                  # este informe
+├── ProyectoFinal.pdf          # enunciado
+├── worlds/
+│   ├── lab2_simple.wbt        # escenario simple (en rediseño)
+│   └── lab2_complex.wbt       # escenario complejo (en rediseño)
+├── controllers/Ruedas/
+│   ├── Ruedas.py              # controlador principal: escenarios, fases, waypoint follower
+│   ├── world_map.py           # parser .wbt → grilla de ocupación precargada
+│   ├── path_planner.py        # A* 8-conectado sobre la grilla
+│   ├── occupancy_grid.py      # grilla 2D (rasterizado + ray-casting)
+│   ├── robot.py               # EpuckRobot: motores, encoders, odometría
+│   ├── estimation.py          # Odometry, Kalman1D, EMA
+│   ├── proximity.py           # sensores IR y conversión a metros
+│   ├── wheel.py               # control de ruedas
+│   └── csv_logger.py          # registro CSV con metadata
+└── logs/                      # CSVs de corridas, rutas y mapas generados
+```

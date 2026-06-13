@@ -17,18 +17,70 @@ TexturedBackgroundLight {
 }
 RectangleArena {
 }
+Pose {
+  translation -0.35 0.35 0.0005
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0 0.75 0
+        roughness 1
+      }
+      geometry Box {
+        size 0.15 0.15 0.001
+      }
+    }
+  ]
+}
+Pose {
+  translation 0.35 -0.35 0.0005
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.8 0 0
+        roughness 1
+      }
+      geometry Box {
+        size 0.15 0.15 0.001
+      }
+    }
+  ]
+}
+Solid {
+  translation -0.25 0.15 0.025
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+      }
+      geometry Box {
+        size 0.5 0.02 0.05
+      }
+    }
+  ]
+  name "simple_wall_01"
+  boundingObject Box {
+    size 0.5 0.02 0.05
+  }
+}
+Solid {
+  translation 0.25 -0.15 0.025
+  children [
+    Shape {
+      appearance PBRAppearance {
+        roughness 1
+      }
+      geometry Box {
+        size 0.5 0.02 0.05
+      }
+    }
+  ]
+  name "simple_wall_02"
+  boundingObject Box {
+    size 0.5 0.02 0.05
+  }
+}
 E-puck {
-  hidden position_0_0 17864.012698638326
-  hidden position_0_1 17963.660320334537
-  hidden linearVelocity_0 -0.059400640430699966 -0.03467045026189428 -9.838018512535664e-09
-  hidden angularVelocity_0 0.0009563773472904583 -0.0016385464495057241 -9.612967185508409e-09
-  hidden rotation_1 0 -1 0 5.366314980418267
-  hidden linearVelocity_1 -0.059408834218219075 -0.034675231886796845 -7.967412636848196e-11
-  hidden angularVelocity_1 1.7337615961943924 -2.9704417267648355 7.809190997457992e-08
-  hidden rotation_2 0 -1 0 6.249658199080664
-  hidden linearVelocity_2 -0.05940883306327147 -0.03467523296839484 1.2445056773230793e-10
-  hidden angularVelocity_2 1.7337616727013556 -2.970441682088949 -8.33122569485095e-08
-  translation 0.17018422100521008 0.18417000911268563 -6.39429673602726e-05
-  rotation -0.0006955660405595269 -0.00018814086664985897 -0.999999740395415 2.613266196909248
+  translation -0.35 0.35 0
+  rotation 0 0 1 -1.5708
   controller "Ruedas"
 }

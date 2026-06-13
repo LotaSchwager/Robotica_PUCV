@@ -101,6 +101,41 @@ class OccupancyGrid:
             half_x, half_y = size_x / 2.0, size_y / 2.0
         self.mark_rect_obstacle(cx, cy, half_x, half_y)
 
+    def mark_rotated_rect(
+        self,
+        cx: float,
+        cy: float,
+        half_x: float,
+        half_y: float,
+        angle_rad: float = 0.0,
+    ) -> None:
+        """
+        Marca las celdas dentro de un rectángulo centrado en (cx, cy), de
+        semiejes (half_x, half_y) y rotado angle_rad respecto al eje X
+        (+ inflación).  Una celda se considera ocupada si su centro cae
+        dentro del rectángulo inflado.
+        """
+        hx = float(half_x) + self.inflation
+        hy = float(half_y) + self.inflation
+        cos_a = math.cos(angle_rad)
+        sin_a = math.sin(angle_rad)
+
+        # AABB del rectángulo rotado para acotar la búsqueda de celdas
+        ext_x = abs(cos_a) * hx + abs(sin_a) * hy
+        ext_y = abs(sin_a) * hx + abs(cos_a) * hy
+        col_lo, row_lo = self.world_to_cell(cx - ext_x, cy - ext_y)
+        col_hi, row_hi = self.world_to_cell(cx + ext_x, cy + ext_y)
+
+        for r in range(max(0, row_lo), min(self.rows, row_hi + 1)):
+            for c in range(max(0, col_lo), min(self.cols, col_hi + 1)):
+                x, y = self.cell_to_world(c, r)
+                dx, dy = x - cx, y - cy
+                # Coordenadas en el marco del rectángulo
+                u = dx * cos_a + dy * sin_a
+                v = -dx * sin_a + dy * cos_a
+                if abs(u) <= hx and abs(v) <= hy:
+                    self._grid[r][c] = True
+
     # ------------------------------------------------------------------
     # Actualización dinámica con sensores (construcción del mapa)
     # ------------------------------------------------------------------

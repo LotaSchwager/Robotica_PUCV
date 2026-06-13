@@ -1,11 +1,21 @@
-# Proyecto Final: Navegación Autónoma con Exploración, Mapping y Planificación A*.
+# Proyecto Final — Línea A: Navegación Autónoma con Planificación de Rutas (A*).
 #
-# Flujo de misión:
+# Flujo de misión (USE_PRELOADED_MAP = True, modo por defecto):
+#   NAV   → la grilla de ocupación se precarga parseando el archivo .wbt del
+#           mundo (world_map.py) y se planifica A* desde el inicio hasta la
+#           meta de inmediato.  El robot sigue los waypoints con control
+#           proporcional y la capa reactiva lo protege de colisiones.
+#   DONE  → robot detenido en la meta.
+#
+# Flujo alternativo (USE_PRELOADED_MAP = False, mapa construido con sensores):
 #   EXPLORE  → el robot navega reactivamente y construye la grilla de ocupación
 #              con sus sensores de proximidad (sin conocimiento previo del mapa).
 #   RETURN   → A* sobre el mapa construido para volver al punto de inicio.
 #   NAV      → A* desde el inicio hasta la meta definida.
 #   DONE     → robot detenido en la meta.
+#
+# El escenario (pose inicial y meta) se selecciona automáticamente según el
+# mundo cargado en Webots (robot.getWorldPath() → SCENARIOS).
 #
 # El filtro de Kalman (Kalman1D) mejora las lecturas de distancia frontal
 # que usa la capa de evasión reactiva, reduciendo falsas detecciones de obstáculos
@@ -24,6 +34,7 @@ from estimation import ExponentialMovingAverage, Kalman1D
 from occupancy_grid import OccupancyGrid
 from path_planner import AStarPlanner
 from robot import EpuckRobot
+from world_map import build_grid_from_world
 
 # ---------------------------------------------------------------------------
 # Parámetros de sensores del e-puck
@@ -47,7 +58,22 @@ MAX_SENSOR_RANGE_M: float = 0.20   # Rango máximo de los sensores IR del e-puck
 CONTROL_SOURCE = "kalman"   # raw | filtered | kalman
 
 # ---------------------------------------------------------------------------
-# Parámetros de exploración
+# Línea de desarrollo
+# ---------------------------------------------------------------------------
+# True  → Línea A: el mapa se precarga desde el .wbt (entorno conocido) y se
+#         planifica A* de inmediato desde el inicio hasta la meta.
+# False → el robot construye el mapa con sensores durante EXPLORE_SECONDS
+#         antes de planificar (estrategia de mapeo autónomo).
+USE_PRELOADED_MAP: bool = True
+
+# ---------------------------------------------------------------------------
+# Grilla de ocupación
+# ---------------------------------------------------------------------------
+GRID_CELL_M: float = 0.05
+GRID_INFLATION_M: float = 0.06   # > radio del e-puck (0.037 m)
+
+# ---------------------------------------------------------------------------
+# Parámetros de exploración (solo con USE_PRELOADED_MAP = False)
 # ---------------------------------------------------------------------------
 # Tiempo de exploración antes de planificar el retorno al inicio.
 EXPLORE_SECONDS: float = 60.0
@@ -102,15 +128,25 @@ TURN_WHEEL_COMMAND_RAD = TURN_WHEEL_TARGET_RAD
 TURN_POSITION_TOLERANCE_RAD = 0.005
 
 # ---------------------------------------------------------------------------
-# Pose inicial y meta (coordenadas del mundo Webots, metros y radianes).
-# Ajustar según el escenario antes de ejecutar.
+# Escenarios: pose inicial (x, y, theta) y meta (x, y) por mundo de Webots.
+# La clave es el nombre del archivo de mundo (robot.getWorldPath()).
+# Las poses corresponden a las marcas de inicio (verde) y meta (roja) de
+# cada arena.
 # ---------------------------------------------------------------------------
-ROBOT_X0_M: float = 0.0
-ROBOT_Y0_M: float = 0.0
-ROBOT_THETA0_RAD: float = 0.0
-
-GOAL_X_M: float = 0.5
-GOAL_Y_M: float = 0.5
+SCENARIOS: dict[str, dict[str, tuple[float, ...]]] = {
+    "lab2_simple.wbt": {
+        "start": (-0.35, 0.35, -math.pi / 2.0),
+        "goal": (0.35, -0.35),
+    },
+    "lab2_complex.wbt": {
+        "start": (-0.9, 0.9, -math.pi / 2.0),
+        "goal": (0.9, -0.9),
+    },
+}
+DEFAULT_SCENARIO: dict[str, tuple[float, ...]] = {
+    "start": (0.0, 0.0, 0.0),
+    "goal": (0.5, 0.5),
+}
 
 # ---------------------------------------------------------------------------
 # Fases de misión
@@ -391,6 +427,51 @@ def _waypoint_step(
 # ---------------------------------------------------------------------------
 # Planificación de ruta y transición de fase
 # ---------------------------------------------------------------------------
+def _dump_route(
+    grid: OccupancyGrid,
+    waypoints: list[tuple[float, float]],
+    start_xy: tuple[float, float],
+    dest_xy: tuple[float, float],
+    label: str,
+) -> None:
+    """
+    Guarda la ruta planificada como CSV (final_route_*.csv) y el mapa con la
+    ruta superpuesta como ASCII (final_map_*.txt) en logs/, para el análisis
+    de ruta planificada vs trayectoria ejecutada.
+    """
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    logs = _logs_dir()
+    try:
+        logs.mkdir(parents=True, exist_ok=True)
+
+        route_path = logs / f"final_route_{label}_{ts}.csv"
+        with open(route_path, "w", encoding="utf-8") as f:
+            f.write("idx,x_m,y_m\n")
+            for i, (wx, wy) in enumerate(waypoints):
+                f.write(f"{i},{wx:.4f},{wy:.4f}\n")
+
+        # Celdas de los tramos entre waypoints para dibujar la ruta en ASCII
+        cells: list[tuple[int, int]] = []
+        prev: tuple[int, int] | None = None
+        for wx, wy in waypoints:
+            cell = grid.world_to_cell(wx, wy)
+            if prev is not None:
+                cells.extend(grid._bresenham(prev[0], prev[1], cell[0], cell[1]))
+            prev = cell
+        if prev is not None:
+            cells.append(prev)
+
+        map_path = logs / f"final_map_{label}_{ts}.txt"
+        map_path.write_text(grid.to_ascii(
+            start=grid.world_to_cell(*start_xy),
+            goal=grid.world_to_cell(*dest_xy),
+            path=cells,
+        ), encoding="utf-8")
+        print(f"Ruta guardada: {route_path.name} | Mapa: {map_path.name}")
+    except OSError as e:
+        print(f"WARNING: no se pudo guardar la ruta ({e}).")
+
+
 def _plan_route(
     planner: AStarPlanner,
     nav: NavState,
@@ -416,6 +497,7 @@ def _plan_route(
             f"{len(waypoints)} waypoints | "
             f"inicio=({x:.2f},{y:.2f}) dest=({dest_x:.2f},{dest_y:.2f})"
         )
+        _dump_route(planner.grid, waypoints, (x, y), (dest_x, dest_y), label)
     else:
         print(f"WARN: A* no encontró ruta → {label}. Se continúa en fase actual.")
     return nav
@@ -505,22 +587,58 @@ def main() -> None:
     robot = EpuckRobot(
         wheel_radius_m=WHEEL_RADIUS_M,
         axle_length_m=AXLE_LENGTH_M,
-        x0=ROBOT_X0_M,
-        y0=ROBOT_Y0_M,
-        theta0=ROBOT_THETA0_RAD,
     )
+
+    # ------------------------------------------------------------------
+    # Selección de escenario según el mundo cargado en Webots
+    # ------------------------------------------------------------------
+    world_path = Path(robot.robot.getWorldPath())
+    scenario = SCENARIOS.get(world_path.name)
+    if scenario is None:
+        print(f"WARN: mundo '{world_path.name}' sin escenario definido; usando valores por defecto.")
+        scenario = DEFAULT_SCENARIO
+
+    start_x, start_y, start_theta = scenario["start"]
+    goal_x, goal_y = scenario["goal"]
+    robot.set_pose(start_x, start_y, start_theta)
 
     Ts = robot.timestep / 1000.0
     fs = (1.0 / Ts) if Ts > 0 else 0.0
 
-    # Grilla de ocupación en blanco (3×3m centrada en el origen).
-    # Se construye en tiempo real durante la exploración.
-    grid = OccupancyGrid.empty(width_m=3.0, height_m=3.0, cell_size_m=0.05, inflation_m=0.07)
+    # ------------------------------------------------------------------
+    # Grilla de ocupación
+    # ------------------------------------------------------------------
+    if USE_PRELOADED_MAP:
+        # Línea A: mapa conocido a priori, parseado del archivo .wbt del mundo.
+        grid, world_model = build_grid_from_world(
+            world_path, cell_size_m=GRID_CELL_M, inflation_m=GRID_INFLATION_M
+        )
+        print(
+            f"Mapa precargado desde {world_path.name}: "
+            f"arena {world_model.arena_width:.1f}x{world_model.arena_height:.1f} m | "
+            f"{len(world_model.obstacles)} obstáculos | "
+            f"grilla {grid.cols}x{grid.rows} celdas"
+        )
+    else:
+        # Grilla en blanco (3×3m centrada en el origen), construida en tiempo
+        # real durante la exploración.
+        grid = OccupancyGrid.empty(
+            width_m=3.0, height_m=3.0,
+            cell_size_m=GRID_CELL_M, inflation_m=GRID_INFLATION_M,
+        )
     planner = AStarPlanner(grid)
 
     ema    = ExponentialMovingAverage(alpha=EMA_ALPHA)
     kalman: Optional[Kalman1D] = None
     nav    = NavState()
+
+    # Con mapa precargado se planifica de inmediato: inicio → meta.
+    if USE_PRELOADED_MAP:
+        nav = _plan_route(
+            planner, nav, start_x, start_y, goal_x, goal_y, PHASE_NAV, "meta"
+        )
+        if not nav.waypoints:
+            print("ERROR: no existe ruta inicio → meta en el mapa precargado.")
 
     log_file = _log_path(CONTROL_SOURCE)
 
@@ -542,13 +660,17 @@ def main() -> None:
         "side_left_m", "side_right_m", "side_left_raw", "side_right_raw",
     ]
 
+    fase_inicial = (
+        nav.phase if USE_PRELOADED_MAP
+        else f"{PHASE_EXPLORE} ({EXPLORE_SECONDS:.0f}s)"
+    )
     print(
-        "=== Proyecto Final: Navegación Autónoma ===\n"
-        f"Fase inicial: {PHASE_EXPLORE} ({EXPLORE_SECONDS:.0f}s) | "
+        "=== Proyecto Final (Línea A): Navegación Autónoma con A* ===\n"
+        f"Mundo: {world_path.name} | Fase inicial: {fase_inicial} | "
         f"CONTROL_SOURCE={CONTROL_SOURCE} | Ts={Ts:.3f}s\n"
-        f"Pose inicial: ({ROBOT_X0_M:.2f}, {ROBOT_Y0_M:.2f}, "
-        f"{math.degrees(ROBOT_THETA0_RAD):.1f}°) | "
-        f"Meta: ({GOAL_X_M:.2f}, {GOAL_Y_M:.2f})"
+        f"Pose inicial: ({start_x:.2f}, {start_y:.2f}, "
+        f"{math.degrees(start_theta):.1f}°) | "
+        f"Meta: ({goal_x:.2f}, {goal_y:.2f})"
     )
     print(f"Log: {log_file}")
 
@@ -557,7 +679,10 @@ def main() -> None:
         logger = CsvLogger(log_file, fieldnames=fieldnames, flush_every=50)
         logger.write_metadata({
             "lab": "final",
+            "world": world_path.name,
+            "use_preloaded_map": USE_PRELOADED_MAP,
             "control_source": CONTROL_SOURCE,
+            "grid_cell_m": GRID_CELL_M, "grid_inflation_m": GRID_INFLATION_M,
             "explore_seconds": EXPLORE_SECONDS,
             "waypoint_tolerance_m": WAYPOINT_TOLERANCE_M,
             "heading_kp": HEADING_KP,
@@ -566,9 +691,9 @@ def main() -> None:
             "ema_alpha": EMA_ALPHA,
             "kalman_P0": KALMAN_P0, "kalman_Q": KALMAN_Q, "kalman_R": KALMAN_R,
             "wheel_radius_m": WHEEL_RADIUS_M, "axle_length_m": AXLE_LENGTH_M,
-            "robot_x0_m": ROBOT_X0_M, "robot_y0_m": ROBOT_Y0_M,
-            "robot_theta0_rad": ROBOT_THETA0_RAD,
-            "goal_x_m": GOAL_X_M, "goal_y_m": GOAL_Y_M,
+            "robot_x0_m": start_x, "robot_y0_m": start_y,
+            "robot_theta0_rad": start_theta,
+            "goal_x_m": goal_x, "goal_y_m": goal_y,
             "goal_tolerance_m": GOAL_TOLERANCE_M,
         })
     except Exception as e:
@@ -618,16 +743,18 @@ def main() -> None:
             )
 
             # ----------------------------------------------------------
-            # 3. Actualización del mapa con sensores (todas las fases)
+            # 3. Actualización del mapa con sensores (solo en exploración:
+            #    el ray-casting marcaría como libres celdas del mapa conocido)
             # ----------------------------------------------------------
-            grid.update_from_all_sensors(
-                x, y, theta, distances_m, PS_ANGLES_RAD, MAX_SENSOR_RANGE_M
-            )
+            if not USE_PRELOADED_MAP:
+                grid.update_from_all_sensors(
+                    x, y, theta, distances_m, PS_ANGLES_RAD, MAX_SENSOR_RANGE_M
+                )
 
             # ----------------------------------------------------------
             # 4. Distancia a la meta final
             # ----------------------------------------------------------
-            nav.dist_to_goal = math.hypot(GOAL_X_M - x, GOAL_Y_M - y)
+            nav.dist_to_goal = math.hypot(goal_x - x, goal_y - y)
 
             # ----------------------------------------------------------
             # 5. Máquina de estados de misión
@@ -649,18 +776,18 @@ def main() -> None:
                 if time_s >= EXPLORE_SECONDS and nav.state == STATE_FORWARD:
                     print(
                         f"\n>>> Exploración completa ({time_s:.1f}s). "
-                        f"Retornando al inicio ({ROBOT_X0_M:.2f},{ROBOT_Y0_M:.2f})..."
+                        f"Retornando al inicio ({start_x:.2f},{start_y:.2f})..."
                     )
                     robot.stop()
                     nav = _plan_route(
                         planner, nav, x, y,
-                        ROBOT_X0_M, ROBOT_Y0_M,
+                        start_x, start_y,
                         PHASE_RETURN, "inicio",
                     )
 
             elif nav.phase in (PHASE_RETURN, PHASE_NAV):
-                dest_x = ROBOT_X0_M if nav.phase == PHASE_RETURN else GOAL_X_M
-                dest_y = ROBOT_Y0_M if nav.phase == PHASE_RETURN else GOAL_Y_M
+                dest_x = start_x if nav.phase == PHASE_RETURN else goal_x
+                dest_y = start_y if nav.phase == PHASE_RETURN else goal_y
 
                 # La evasión reactiva interrumpe el waypoint follower
                 if nav.state in (STATE_BACKUP, STATE_TURN):
@@ -692,12 +819,12 @@ def main() -> None:
                     if nav.phase == PHASE_RETURN:
                         print(
                             f"\n>>> Retorno completado (dist_inicio={dist_dest:.3f}m). "
-                            f"Planificando ruta a la meta ({GOAL_X_M:.2f},{GOAL_Y_M:.2f})..."
+                            f"Planificando ruta a la meta ({goal_x:.2f},{goal_y:.2f})..."
                         )
                         robot.stop()
                         nav = _plan_route(
                             planner, nav, x, y,
-                            GOAL_X_M, GOAL_Y_M,
+                            goal_x, goal_y,
                             PHASE_NAV, "meta",
                         )
                     elif nav.phase == PHASE_NAV:
