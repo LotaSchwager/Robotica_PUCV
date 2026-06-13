@@ -191,6 +191,9 @@ class NavState:
     waypoints: list = field(default_factory=list)
     waypoint_idx: int = 0
 
+    # Replanificación tras evasión de obstáculo dinámico
+    replan_pending: bool = False
+
     # Métricas
     dist_to_goal: float = math.inf
 
@@ -789,6 +792,8 @@ def main() -> None:
                 dest_x = start_x if nav.phase == PHASE_RETURN else goal_x
                 dest_y = start_y if nav.phase == PHASE_RETURN else goal_y
 
+                prev_state = nav.state
+
                 # La evasión reactiva interrumpe el waypoint follower
                 if nav.state in (STATE_BACKUP, STATE_TURN):
                     nav = _reactive_step(
@@ -801,6 +806,16 @@ def main() -> None:
                         post_turn_state=STATE_WAYPOINT_FOLLOW,
                     )
                 elif front_used_m <= SAFE_DISTANCE_M:
+                    # Primera detección de obstáculo dinámico: marcar en grilla
+                    if nav.state == STATE_WAYPOINT_FOLLOW and not nav.replan_pending:
+                        obs_x = x + front_used_m * math.cos(theta)
+                        obs_y = y + front_used_m * math.sin(theta)
+                        grid.mark_rect_obstacle(obs_x, obs_y, 0.0, 0.0)
+                        nav.replan_pending = True
+                        print(
+                            f"Obstáculo dinámico en ({obs_x:.2f},{obs_y:.2f}). "
+                            f"Marcado en grilla; replanificará tras evasión."
+                        )
                     nav = _reactive_step(
                         robot=robot, nav=nav,
                         front_used_m=front_used_m,
@@ -812,6 +827,17 @@ def main() -> None:
                     )
                 else:
                     nav = _waypoint_step(robot, nav, x, y, theta)
+
+                # Replanificar desde posición actual tras completar el giro reactivo
+                if (
+                    nav.replan_pending
+                    and prev_state == STATE_TURN
+                    and nav.state == STATE_WAYPOINT_FOLLOW
+                ):
+                    nav.replan_pending = False
+                    nav = _plan_route(
+                        planner, nav, x, y, dest_x, dest_y, nav.phase, "replan"
+                    )
 
                 # Verificar si se completó la ruta de esta fase
                 if nav.waypoint_idx >= len(nav.waypoints) and nav.waypoints:
