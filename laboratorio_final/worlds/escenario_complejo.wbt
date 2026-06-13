@@ -1,0 +1,1052 @@
+#VRML_SIM R2025a utf8
+
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/robots/gctronic/e-puck/protos/E-puck.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/floors/protos/RectangleArena.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/obstacles/protos/OilBarrel.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2025a/projects/objects/toys/protos/RubberDuck.proto"
+
+WorldInfo {
+  info [
+    "Escenario Complejo - Proyecto Final Robotica"
+    "Robot debe navegar desde punto INICIO (rojo, celda 0,0) hasta META (verde, celda 11,11)"
+    "Grilla de ocupacion: 12x12 celdas de 0.25 x 0.25 m, area total 3.0 x 3.0 m"
+    "x(col) = -1.5 + 0.25*col + 0.125 ; y(row) = -1.5 + 0.25*row + 0.125"
+    "Conectividad verificada por BFS: existe camino libre entre INICIO y META"
+    "Mapa (fila 11 arriba .. fila 0 abajo, columna 0 izq .. 11 der):"
+    "row11: . . . . # . . . . . # G"
+    "row10: . # . . . . . . . # . #"
+    "row9 : . # . . . . . . # # . ."
+    "row8 : . # . . # . . # . . . ."
+    "row7 : . # . . # . . # . . . ."
+    "row6 : . # . . # . . . # . . ."
+    "row5 : . . . # # . . # . . . ."
+    "row4 : . # . # # # . # # . . #"
+    "row3 : . . . . # . . . # . . ."
+    "row2 : . # # . . . . . . . . ."
+    "row1 : . # . . . . . . . # . ."
+    "row0 : S . # . . # # . # . # ."
+  ]
+  basicTimeStep 16
+  contactProperties [
+    ContactProperties {
+      material1 "epuck_wheel"
+      material2 "floor"
+      coulombFriction [
+        0.7
+      ]
+    }
+  ]
+}
+Viewpoint {
+  orientation 0.5241287602818507 0.49575397759280854 -0.6924716863138299 1.9548468106886905
+  position 0.20984233462696222 2.0749271765107036 7.656774927897567
+}
+TexturedBackground {
+}
+TexturedBackgroundLight {
+}
+RectangleArena {
+  floorSize 3 3
+  floorTileSize 0.25 0.25
+  wallHeight 0.12
+}
+Solid {
+  translation -0.505 0.755 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_3_6(2)"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+RubberDuck {
+  translation -0.44 0.32 0.02
+}
+Solid {
+  translation -1.375 -1.375 0.001
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 1 0 0
+        roughness 1
+        metalness 0
+      }
+      geometry Cylinder {
+        height 0.002
+        radius 0.06
+      }
+    }
+  ]
+  name "marcador_inicio"
+}
+Solid {
+  translation 1.375 1.375 0.001
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0 1 0
+        roughness 1
+        metalness 0
+      }
+      geometry Cylinder {
+        height 0.002
+        radius 0.06
+      }
+    }
+  ]
+  name "marcador_meta"
+}
+Solid {
+  translation -1.125 -1.125 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_1_1"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation -1.125 -0.625 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_1_4"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation -1.125 0.125 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_1_6"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation -0.875 -1.375 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_2_0"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation -0.875 -1.125 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_2_1"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation -0.875 -0.625 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_2_3"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation -0.875 0.005 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_2_6"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation -0.255 0.005 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_2_6(1)"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation -0.875 0.375 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_2_7"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation -0.625 -0.125 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_3_5"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation -0.875 -0.125 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_3_6"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation -1.005 0.255 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_3_6(1)"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation -0.625 0.625 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_3_8"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation -0.375 -0.875 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_4_2"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation -0.375 -0.375 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_4_4"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation -0.375 -0.125 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_4_5"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation -0.755 0.505 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_4_6"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation -0.375 0.865 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_4_7"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation -0.125 -0.875 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_4_8"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation 0.125 -0.875 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_4_8(1)"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation 0.375 -0.875 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_4_8(2)"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation -0.375 1.375 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_4_11"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation -0.125 -1.375 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_5_0"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation -0.125 -0.125 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_5_5"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation -0.125 0.125 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_5_6"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation -0.125 0.375 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_5_7"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation -0.125 0.625 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_5_8"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation -0.125 0.875 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_5_9"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation 0.125 -1.375 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_6_0"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation 0.125 -0.375 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_6_4"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation -0.125 1.375 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_6_11"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation 0.375 -1.375 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_7_0"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation 0.375 -0.375 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_7_4"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation 0.375 -0.125 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_7_5"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation 0.375 0.375 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_7_7"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation 0.375 0.625 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_7_8"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation 0.375 1.125 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_7_10"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation 0.625 -1.375 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_8_0"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation 0.625 -0.375 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_8_4"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation 0.625 1.125 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_8_10"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation 0.875 -0.625 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_9_3"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation 0.875 -0.375 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_9_4"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation 0.875 0.125 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_9_6"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation 0.875 0.375 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_9_7"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation 0.875 0.625 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_9_8"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation 0.875 0.875 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_9_9"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation 1.375 -0.375 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_11_4"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation 1.375 -0.125 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_11_5"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation 1.375 0.125 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_11_6"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation 1.375 0.875 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_11_9"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+Solid {
+  translation 1.375 1.125 0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.55 0.55 0.55
+        roughness 0.8
+      }
+      geometry Box {
+        size 0.25 0.25 0.12
+      }
+    }
+  ]
+  name "obs_11_10"
+  boundingObject Box {
+    size 0.25 0.25 0.12
+  }
+}
+E-puck {
+  translation -1.375 -1.375 0
+  rotation 0 0 1 1.5707963267948966
+  controller "<extern>"
+  turretSlot [
+    DistanceSensor {
+      translation 0.035 0 0.02
+      name "ds_front"
+      lookupTable [
+        0 0 0
+        0.05 1000 0
+      ]
+      type "infra-red"
+    }
+  ]
+}
+OilBarrel {
+  translation 1.19 -1.19 0.05
+  height 0.1
+  radius 0.3
+}
+OilBarrel {
+  translation -1.14 1.14 0.05
+  name "oil barrel(1)"
+  height 0.1
+  radius 0.35
+}
