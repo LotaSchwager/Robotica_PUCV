@@ -30,12 +30,11 @@ Parámetros geométricos: radio de rueda r = 0.0205 m, distancia entre ruedas L 
 
 ## 3. Escenarios de Prueba
 
-Ambos escenarios definen una **marca verde** (posición inicial) y una **marca roja** (meta) en el piso de la arena.
+Ambos escenarios definen una **marca roja** (posición inicial del robot) y una **marca verde** (meta) en el piso de la arena.
 
-- **`worlds/lab2_simple.wbt` (escenario simple):** arena de 1×1 m con dos muros que fuerzan una ruta en forma de "S" entre el inicio (-0.35, 0.35) y la meta (0.35, -0.35). Pocos obstáculos y ruta relativamente directa.
-- **`worlds/lab2_complex.wbt` (escenario complejo):** arena de 2×2 m con un laberinto de ~25 muros que forman pasillos estrechos (~0.24 m), curvas y rutas alternativas. Inicio en (-0.9, 0.9) y meta en (0.9, -0.9), esquinas opuestas del laberinto.
+- **`worlds/lab2_simple.wbt` (escenario simple):** arena de 1×1 m con dos muros que fuerzan una ruta en forma de "S" entre el inicio (-0.35, 0.35) y la meta (0.35, -0.35). Pocos obstáculos y ruta relativamente directa. Ruta planificada por A*: 11 waypoints, 1.47 m.
 
-> **Nota de mantención:** los mundos están en proceso de rediseño para ajustarse mejor al enunciado. La grilla de ocupación **no requiere actualización manual** al cambiar un mundo: se genera automáticamente parseando el archivo `.wbt` (ver sección 4.1). Lo único que debe actualizarse al cambiar un mapa son las entradas del diccionario `SCENARIOS` en `controllers/Ruedas/Ruedas.py` (pose inicial y meta de cada mundo), haciéndolas coincidir con las marcas verde/roja y la pose del e-puck en el `.wbt`.
+- **`worlds/escenario_complejo.wbt` (escenario complejo):** arena de 3×3 m modelada como una grilla de 12×12 celdas de 0.25 m. Contiene 52 obstáculos cúbicos (0.25×0.25 m) distribuidos en forma de laberinto con múltiples bloqueos y rutas alternativas. El robot parte de la esquina inferior-izquierda (-1.375, -1.375) y debe llegar a la esquina superior-derecha (1.375, 1.375), ambas en esquinas opuestas. Ruta planificada por A*: 14 waypoints, 4.91 m.
 
 ## 4. Algoritmo Implementado
 
@@ -110,7 +109,7 @@ El proyecto **extiende** estos aprendizajes con la navegación global: la odomet
 
 Requisitos: Webots R2023 o superior (probado con R2025a) y Python 3.10+.
 
-1. Abrir Webots y cargar `laboratorio_final/worlds/lab2_simple.wbt` o `lab2_complex.wbt` (File → Open World).
+1. Abrir Webots y cargar `laboratorio_final/worlds/lab2_simple.wbt` o `escenario_complejo.wbt` (File → Open World).
 2. Presionar Play. El controlador detecta el mundo automáticamente: no hay que editar nada entre escenarios.
 3. La consola muestra el mapa cargado, la ruta planificada y las transiciones de fase; al llegar imprime `META ALCANZADA` con pose, error y tiempo.
 4. Al finalizar quedan en `laboratorio_final/logs/`:
@@ -134,7 +133,7 @@ Métricas a reportar por escenario (mínimo 5 corridas):
 - Error de posición final (odometría vs marca de meta).
 - Porcentaje de ejecuciones exitosas.
 
-Validación offline ya realizada (sin simulación): el parser de mundos y A* encuentran ruta en ambos escenarios — simple: 11 waypoints, 1.47 m planificados; complejo: 18 waypoints atravesando el laberinto.
+Validación offline ya realizada (sin simulación): el parser de mundos y A* encuentran ruta en ambos escenarios — simple: 11 waypoints, 1.47 m; complejo: 14 waypoints, 4.91 m atravesando el laberinto.
 
 ## 8. Evidencias
 
@@ -145,7 +144,7 @@ Validación offline ya realizada (sin simulación): el parser de mundos y A* enc
 > **Pendiente de resultados experimentales.** Limitaciones ya identificadas en el diseño:
 
 - La pose del robot proviene solo de odometría: el error se acumula con la distancia recorrida y en rutas largas puede desviar el seguimiento de waypoints (sin corrección global tipo GPS/landmarks).
-- En pasillos estrechos (~0.24 m del escenario complejo) el umbral reactivo `SAFE_DISTANCE_M = 0.17` puede activar giros innecesarios; es el primer parámetro a calibrar experimentalmente.
+- En el escenario complejo, los corredores entre obstáculos de 0.25 m tienen un ancho libre de ~0.13 m tras la inflación de la grilla; el umbral reactivo `SAFE_DISTANCE_M = 0.17` puede activar giros en pasos estrechos — es el primer parámetro a calibrar experimentalmente.
 - La inflación fija (0.06 m) es un compromiso: valores mayores dan más seguridad pero pueden cerrar pasillos estrechos en la grilla.
 - Mejoras posibles: replanificación A* cuando la capa reactiva desvía al robot de la ruta, suavizado de trayectoria (línea de visión entre waypoints), y fusión de la odometría con mediciones absolutas.
 
@@ -156,8 +155,8 @@ laboratorio_final/
 ├── README.md                  # este informe
 ├── ProyectoFinal.pdf          # enunciado
 ├── worlds/
-│   ├── lab2_simple.wbt        # escenario simple (en rediseño)
-│   └── lab2_complex.wbt       # escenario complejo (en rediseño)
+│   ├── lab2_simple.wbt        # escenario simple (1×1 m, 2 muros)
+│   └── escenario_complejo.wbt # escenario complejo (3×3 m, laberinto 12×12)
 ├── controllers/Ruedas/
 │   ├── Ruedas.py              # controlador principal: escenarios, fases, waypoint follower
 │   ├── world_map.py           # parser .wbt → grilla de ocupación precargada

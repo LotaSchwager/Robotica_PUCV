@@ -22,7 +22,7 @@ Pose {
   children [
     Shape {
       appearance PBRAppearance {
-        baseColor 0 0.75 0
+        baseColor 0.8 0 0
         roughness 1
       }
       geometry Box {
@@ -36,7 +36,7 @@ Pose {
   children [
     Shape {
       appearance PBRAppearance {
-        baseColor 0.8 0 0
+        baseColor 0 0.75 0
         roughness 1
       }
       geometry Box {

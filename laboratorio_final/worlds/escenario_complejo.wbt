@@ -1026,7 +1026,7 @@ Solid {
 E-puck {
   translation -1.375 -1.375 0
   rotation 0 0 1 1.5707963267948966
-  controller "<extern>"
+  controller "Ruedas"
   turretSlot [
     DistanceSensor {
       translation 0.035 0 0.02

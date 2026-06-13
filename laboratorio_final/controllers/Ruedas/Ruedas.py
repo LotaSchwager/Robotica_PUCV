@@ -130,7 +130,7 @@ TURN_POSITION_TOLERANCE_RAD = 0.005
 # ---------------------------------------------------------------------------
 # Escenarios: pose inicial (x, y, theta) y meta (x, y) por mundo de Webots.
 # La clave es el nombre del archivo de mundo (robot.getWorldPath()).
-# Las poses corresponden a las marcas de inicio (verde) y meta (roja) de
+# Las poses corresponden a las marcas de inicio (roja) y meta (verde) de
 # cada arena.
 # ---------------------------------------------------------------------------
 SCENARIOS: dict[str, dict[str, tuple[float, ...]]] = {
@@ -138,9 +138,9 @@ SCENARIOS: dict[str, dict[str, tuple[float, ...]]] = {
         "start": (-0.35, 0.35, -math.pi / 2.0),
         "goal": (0.35, -0.35),
     },
-    "lab2_complex.wbt": {
-        "start": (-0.9, 0.9, -math.pi / 2.0),
-        "goal": (0.9, -0.9),
+    "escenario_complejo.wbt": {
+        "start": (-1.375, -1.375, math.pi / 2.0),
+        "goal": (1.375, 1.375),
     },
 }
 DEFAULT_SCENARIO: dict[str, tuple[float, ...]] = {
