@@ -251,10 +251,11 @@ class OccupancyGrid:
         start: tuple[int, int] | None = None,
         goal: tuple[int, int] | None = None,
         path: list[tuple[int, int]] | None = None,
+        robot: tuple[int, int] | None = None,
     ) -> str:
         """
         Representación ASCII de la grilla.
-        '#'=ocupado, '.'=libre, 'S'=inicio, 'G'=meta, '*'=ruta.
+        '#'=ocupado, '.'=libre, 'S'=inicio, 'G'=meta, '*'=ruta, 'O'=robot actual.
         El eje Y se invierte (row 0 = abajo).
         """
         path_set = set(path) if path else set()
@@ -262,7 +263,9 @@ class OccupancyGrid:
         for r in range(self.rows - 1, -1, -1):
             row_chars = []
             for c in range(self.cols):
-                if start and (c, r) == start:
+                if robot and (c, r) == robot:
+                    row_chars.append("O")
+                elif start and (c, r) == start:
                     row_chars.append("S")
                 elif goal and (c, r) == goal:
                     row_chars.append("G")

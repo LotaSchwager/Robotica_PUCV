@@ -66,6 +66,11 @@ CONTROL_SOURCE = "kalman"   # raw | filtered | kalman
 #         antes de planificar (estrategia de mapeo autónomo).
 USE_PRELOADED_MAP: bool = True
 
+# True  → usar el giróscopo interno del e-puck para estimar theta (más preciso en giros).
+# False → solo encoders (comportamiento original).
+# Confirmado por el PROTO: dispositivo "gyro" existe, eje Z (índice 2) = yaw.
+USE_GYRO: bool = False
+
 # ---------------------------------------------------------------------------
 # Grilla de ocupación
 # ---------------------------------------------------------------------------
@@ -86,6 +91,11 @@ HEADING_KP: float = 2.5             # Ganancia proporcional para el error de ori
 WAYPOINT_KV: float = 2.0            # Ganancia de velocidad lineal en función de distancia
 
 # ---------------------------------------------------------------------------
+# Diagnóstico: print periódico de la grilla con posición actual del robot
+# ---------------------------------------------------------------------------
+PRINT_GRID_EVERY_S: float = 5.0   # cada cuántos segundos imprimir la grilla
+
+# ---------------------------------------------------------------------------
 # Umbral de llegada a la meta final
 # ---------------------------------------------------------------------------
 GOAL_TOLERANCE_M: float = 0.05   # Robot debe estar a ≤ 5cm del marcador
@@ -94,6 +104,19 @@ GOAL_TOLERANCE_M: float = 0.05   # Robot debe estar a ≤ 5cm del marcador
 # Parámetros de la capa reactiva
 # ---------------------------------------------------------------------------
 PRECAUTION_DISTANCE_M = 0.20  # Reducir velocidad al aproximarse a obstáculo
+SAFE_DISTANCE_M = 0.15        # Umbral de giro de emergencia en modo reactivo (PHASE_EXPLORE)
+
+# Detector de atasco por sensores
+# Si el robot lleva este nº de pasos con pared frontal o lateral mientras sigue waypoints,
+# se considera atascado (wheel-slip contra pared) → reset odometría + replanificar.
+STUCK_FRONT_STEPS: int = 20   # ~0.32 s a 62 Hz
+
+# Prevención de giro prematuro: antes de un giro >= TURN_VERIFY_DEG, el robot
+# debe haber recorrido el segmento completo MÁS una celda extra (GRID_CELL_M).
+# El margen de 1 celda compensa la deriva acumulada de odometría; sin él el robot
+# giraba sistemáticamente 1 celda antes de llegar al punto de giro correcto.
+TURN_VERIFY_DEG:  float = 75.0   # heading change mínimo para activar giro en el lugar
+POINT_TURN_DONE_DEG: float = 8.0 # error de heading al que se considera alineado y se avanza
 
 # Umbrales de parada de emergencia (lecturas RAW, sin filtro Kalman).
 # Los cálculos asumen ángulos de sensor del e-puck:
@@ -106,8 +129,8 @@ STOP_SIDE_M  = 0.06  # ps1/ps6 raw: detecta pared lateral a ~5.5cm real (sin fal
 SIDE_DECISION_DEADBAND_M = 0.01
 FRONT_TIEBREAK_DEADBAND_M = 0.005
 
-FORWARD_SPEED_FACTOR = 0.35   # Reducido para dar más tiempo de reacción en corredores
-TURN_SPEED_FACTOR = 0.35
+FORWARD_SPEED_FACTOR = 0.60   # velocidad lineal (fracción de MAX_SPEED ~6.28 rad/s)
+TURN_SPEED_FACTOR = 0.50
 TURN_MIN_SPEED_FACTOR = 0.08
 
 BACKUP_HOLD_STEPS = 17
@@ -125,7 +148,8 @@ KALMAN_R = 5e-3
 # Parámetros geométricos del e-puck
 # ---------------------------------------------------------------------------
 WHEEL_RADIUS_M = 0.0205
-AXLE_LENGTH_M = 0.0573
+AXLE_LENGTH_M = 0.0573  # valor empírico para la simulación; 0.052 m es el físico pero causa
+                        # oscilación del loop de heading cuando se usa sin giróscopo
 
 # ---------------------------------------------------------------------------
 # Giro reactivo de 90° (control por posición de encoders)
@@ -205,6 +229,13 @@ class NavState:
     # Seguimiento de waypoints
     waypoints: list = field(default_factory=list)
     waypoint_idx: int = 0
+
+    # Prevención de giro prematuro: distancia recorrida desde el último waypoint consumido
+    # y posición de ese waypoint (origen del segmento actual).
+    dist_since_last_wp: float = 0.0
+    prev_wp_x: float = 0.0
+    prev_wp_y: float = 0.0
+    point_turn_active: bool = False  # True mientras el robot gira en el lugar antes de avanzar
 
     # Replanificación tras evasión de obstáculo dinámico
     replan_pending: bool = False
@@ -475,7 +506,30 @@ def _waypoint_step(
     def _wp_tol(idx: int) -> float:
         return GOAL_TOLERANCE_M if idx == len(nav.waypoints) - 1 else WAYPOINT_TOLERANCE_M
 
+    _turn_verify_rad = math.radians(TURN_VERIFY_DEG)
+    deferred = False
     while dist <= _wp_tol(nav.waypoint_idx):
+        # Prevención de giro prematuro: si el siguiente segmento cambia el heading más
+        # de TURN_VERIFY_DEG, exigir haber recorrido el segmento completo + 1 celda extra.
+        # El +GRID_CELL_M compensa la deriva acumulada de odometría que hace que el robot
+        # "llegue" al waypoint de giro con la posición odométrica, estando aún 1 celda atrás.
+        if nav.waypoint_idx + 1 < len(nav.waypoints):
+            next_wp_x, next_wp_y = nav.waypoints[nav.waypoint_idx + 1]
+            seg_hdg  = math.atan2(wp_y - nav.prev_wp_y, wp_x - nav.prev_wp_x)
+            next_hdg = math.atan2(next_wp_y - wp_y, next_wp_x - wp_x)
+            hdg_change = abs(math.atan2(
+                math.sin(next_hdg - seg_hdg),
+                math.cos(next_hdg - seg_hdg),
+            ))
+            expected_seg = math.hypot(wp_x - nav.prev_wp_x, wp_y - nav.prev_wp_y)
+            if (hdg_change > _turn_verify_rad
+                    and expected_seg > WAYPOINT_TOLERANCE_M
+                    and nav.dist_since_last_wp < expected_seg + GRID_CELL_M * 2.5):
+                deferred = True
+                break  # aún no se recorrió suficiente del segmento actual → no girar
+
+        nav.prev_wp_x, nav.prev_wp_y = wp_x, wp_y
+        nav.dist_since_last_wp = 0.0
         nav.waypoint_idx += 1
         if nav.waypoint_idx >= len(nav.waypoints):
             robot.stop()
@@ -483,27 +537,49 @@ def _waypoint_step(
         wp_x, wp_y = nav.waypoints[nav.waypoint_idx]
         dist = math.hypot(wp_x - x, wp_y - y)
 
-    desired_heading = math.atan2(wp_y - y, wp_x - x)
+    # Si se difirió el giro, usar la dirección del segmento en curso en vez de apuntar
+    # al waypoint actual (que ya está detrás/al lado y daría un heading poco fiable).
+    if deferred:
+        desired_heading = math.atan2(wp_y - nav.prev_wp_y, wp_x - nav.prev_wp_x)
+    else:
+        desired_heading = math.atan2(wp_y - y, wp_x - x)
     heading_error = math.atan2(
         math.sin(desired_heading - theta),
         math.cos(desired_heading - theta),
     )
 
-    # Factor angular (clamped)
+    # Giro en el lugar (point turn):
+    # Se activa cuando el heading error supera TURN_VERIFY_DEG.
+    # El robot se queda quieto y gira sobre su eje hasta quedar a < POINT_TURN_DONE_DEG
+    # del objetivo, evitando que avance hacia paredes durante un giro brusco.
+    _pt_activate = math.radians(TURN_VERIFY_DEG)
+    _pt_done     = math.radians(POINT_TURN_DONE_DEG)
+
+    if abs(heading_error) >= _pt_activate:
+        nav.point_turn_active = True
+    elif abs(heading_error) < _pt_done:
+        nav.point_turn_active = False
+
+    if nav.point_turn_active:
+        omega = max(-TURN_SPEED_FACTOR, min(TURN_SPEED_FACTOR, HEADING_KP * heading_error))
+        robot.wheels.set_velocities(
+            -omega * robot.wheels.MAX_SPEED,
+             omega * robot.wheels.MAX_SPEED,
+        )
+        nav.state = STATE_WAYPOINT_FOLLOW
+        return nav
+
+    # Control proporcional normal (heading error ya pequeño, robot alineado)
     omega = HEADING_KP * heading_error
     omega = max(-TURN_SPEED_FACTOR, min(TURN_SPEED_FACTOR, omega))
 
-    # Factor lineal: si el error de orientación supera 30°, giro en el lugar.
-    # 30° (antes 60°) da más precisión de orientación antes de avanzar;
-    # evita que el robot se desvíe hacia paredes al corregir trayectorias curvas.
     HEADING_STOP_RAD = math.radians(30)
     if abs(heading_error) >= HEADING_STOP_RAD:
         fwd = 0.0
     else:
         fwd = FORWARD_SPEED_FACTOR * (1.0 - abs(heading_error) / HEADING_STOP_RAD)
-        fwd = min(fwd, WAYPOINT_KV * dist)  # también se reduce cerca del waypoint
+        fwd = min(fwd, WAYPOINT_KV * dist)
 
-        # Reducción de velocidad por proximidad a obstáculos (ralentizar, no detener)
         if front_dist_m < PRECAUTION_DISTANCE_M:
             front_factor = max(0.3, front_dist_m / PRECAUTION_DISTANCE_M)
             fwd *= front_factor
@@ -511,7 +587,6 @@ def _waypoint_step(
     left_factor  = fwd - omega
     right_factor = fwd + omega
 
-    # Normalizar para no superar FORWARD_SPEED_FACTOR
     max_f = max(abs(left_factor), abs(right_factor))
     if max_f > FORWARD_SPEED_FACTOR:
         scale = FORWARD_SPEED_FACTOR / max_f
@@ -594,6 +669,10 @@ def _plan_route(
         nav.state = STATE_WAYPOINT_FOLLOW
         nav.waypoints = waypoints
         nav.waypoint_idx = 0
+        nav.prev_wp_x = x
+        nav.prev_wp_y = y
+        nav.dist_since_last_wp = 0.0
+        nav.point_turn_active = False
         print(
             f"Ruta planificada → {label} | "
             f"{len(waypoints)} waypoints | "
@@ -689,6 +768,7 @@ def main() -> None:
     robot = EpuckRobot(
         wheel_radius_m=WHEEL_RADIUS_M,
         axle_length_m=AXLE_LENGTH_M,
+        use_gyro=USE_GYRO,
     )
 
     # ------------------------------------------------------------------
@@ -822,6 +902,13 @@ def main() -> None:
     except Exception as e:
         print(f"WARNING: no se pudo crear el log ({type(e).__name__}: {e}).")
 
+    # Última posición odométrica que estaba dentro de una celda libre.
+    last_free_x: float = start_x
+    last_free_y: float = start_y
+
+    # Contador de pasos consecutivos con pared detectada mientras el robot avanza.
+    stuck_steps_count: int = 0
+
     try:
         k = 0
         while robot.step():
@@ -882,6 +969,71 @@ def main() -> None:
             # ----------------------------------------------------------
             # 5. Máquina de estados de misión
             # ----------------------------------------------------------
+            r_col, r_row = grid.world_to_cell(x, y)
+            g_col, g_row = grid.world_to_cell(goal_x, goal_y)
+
+            # Corrección de deriva odométrica: si la pose estimada cayó dentro de
+            # un obstáculo, las ruedas resbalaron sin avanzar (wheel-slip).
+            # Se resetea a la última posición libre y se replantifica.
+            if grid.is_free(r_col, r_row):
+                last_free_x, last_free_y = x, y
+            elif nav.phase in (PHASE_NAV, PHASE_RETURN):
+                robot.stop()
+                drift_dest_x = start_x if nav.phase == PHASE_RETURN else goal_x
+                drift_dest_y = start_y if nav.phase == PHASE_RETURN else goal_y
+                print(
+                    f"DERIVA: celda ({r_col},{r_row}) OCUPADA | "
+                    f"pose estimada=({x:.3f},{y:.3f}) | "
+                    f"reset a última libre=({last_free_x:.3f},{last_free_y:.3f})"
+                )
+                robot.set_pose(last_free_x, last_free_y, theta)
+                x, y = last_free_x, last_free_y
+                r_col, r_row = grid.world_to_cell(x, y)
+                nav = _plan_route(
+                    planner, nav, x, y, drift_dest_x, drift_dest_y,
+                    nav.phase, "replan-deriva"
+                )
+
+            # ----------------------------------------------------------
+            # 5b. Acumulación de distancia por segmento + detector de atasco
+            # ----------------------------------------------------------
+            if nav.state == STATE_WAYPOINT_FOLLOW:
+                nav.dist_since_last_wp += abs(float(delta_s_m))
+
+            if nav.phase in (PHASE_NAV, PHASE_RETURN) and nav.state == STATE_WAYPOINT_FOLLOW:
+                # Sensor frontal y diagonal raw (ya disponibles en distances_m de sección 1)
+                _sf = min(float(distances_m[0]), float(distances_m[7]))
+                _d1, _d6 = float(distances_m[1]), float(distances_m[6])
+                _sd = min(
+                    (d for d in (_d1, _d6) if not math.isnan(d) and not math.isinf(d)),
+                    default=math.inf,
+                )
+                if _sf < STOP_FRONT_M or _sd < STOP_SIDE_M:
+                    stuck_steps_count += 1
+                else:
+                    stuck_steps_count = 0
+
+                if stuck_steps_count >= STUCK_FRONT_STEPS:
+                    robot.stop()
+                    stuck_steps_count = 0
+                    nav.dist_since_last_wp = 0.0
+                    _stuck_trig  = "frontal" if _sf < STOP_FRONT_M else "lateral"
+                    _stuck_destx = start_x if nav.phase == PHASE_RETURN else goal_x
+                    _stuck_desty = start_y if nav.phase == PHASE_RETURN else goal_y
+                    print(
+                        f"STUCK [{_stuck_trig}] t={time_s:.1f}s | "
+                        f"sensor_front={_sf:.3f}m sensor_diag={_sd:.3f}m | "
+                        f"reset ({x:.3f},{y:.3f})→({last_free_x:.3f},{last_free_y:.3f})"
+                    )
+                    robot.set_pose(last_free_x, last_free_y, theta)
+                    x, y = last_free_x, last_free_y
+                    r_col, r_row = grid.world_to_cell(x, y)
+                    nav = _plan_route(
+                        planner, nav, x, y, _stuck_destx, _stuck_desty,
+                        nav.phase, "replan-stuck"
+                    )
+            else:
+                stuck_steps_count = 0
 
             if nav.phase == PHASE_EXPLORE:
                 # Navegación reactiva para explorar y construir el mapa
@@ -934,16 +1086,21 @@ def main() -> None:
 
                 if stop_now:
                     if nav.evasion_cooldown <= 0:
-                        # Primera detección: parar y replanificar A* desde posición actual.
+                        # Primera detección: parar, resetear odometría a última posición
+                        # libre (evita replanificar desde una posición dentro de un obstáculo
+                        # por wheel-slip) y replanificar A*.
                         robot.stop()
                         trigger = "front" if raw_front_m < STOP_FRONT_M else "lateral"
                         print(
                             f"PARADA [{trigger}] | front_raw={raw_front_m:.3f}m "
                             f"diag_raw={raw_diag_m:.3f}m | "
-                            f"pose=({x:.2f},{y:.2f},{math.degrees(theta):.0f}°) | "
-                            f"Replanificando A*..."
+                            f"pose=({x:.2f},{y:.2f},{math.degrees(theta):.0f}°) → "
+                            f"reset a ({last_free_x:.3f},{last_free_y:.3f})"
                         )
                         nav.evasion_cooldown = 30
+                        nav.dist_since_last_wp = 0.0
+                        robot.set_pose(last_free_x, last_free_y, theta)
+                        x, y = last_free_x, last_free_y
                         nav = _plan_route(
                             planner, nav, x, y, dest_x, dest_y,
                             nav.phase, "replan-parada"
@@ -1015,6 +1172,28 @@ def main() -> None:
             # 6. Log
             # ----------------------------------------------------------
             cmd_left_vel, cmd_right_vel = robot.wheels.get_last_velocities()
+
+            # ----------------------------------------------------------
+            # 7. Print periódico de grilla con posición actual del robot
+            # ----------------------------------------------------------
+            if PRINT_GRID_EVERY_S > 0 and k > 0:
+                steps_per_print = max(1, int(PRINT_GRID_EVERY_S / Ts))
+                if k % steps_per_print == 0:
+                    s_col, s_row = grid.world_to_cell(start_x, start_y)
+                    print(
+                        f"\n--- t={time_s:.1f}s | "
+                        f"pose=({x:.3f},{y:.3f},{math.degrees(theta):.1f}°) | "
+                        f"celda=({r_col},{r_row}) | "
+                        f"wp {nav.waypoint_idx}/{len(nav.waypoints)} | "
+                        f"dist_meta={nav.dist_to_goal:.3f}m ---"
+                    )
+                    print(grid.to_ascii(
+                        start=(s_col, s_row),
+                        goal=(g_col, g_row),
+                        path=route_cells,
+                        robot=(r_col, r_row),
+                    ))
+                    print(f"S=inicio  G=meta  *=ruta  O=robot  #=obstáculo\n")
 
             if logger is not None:
                 logger.log(_build_log_row(

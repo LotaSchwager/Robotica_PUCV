@@ -78,6 +78,24 @@ class Odometry:
         self.theta += float(delta_theta)
         return self.x, self.y, self.theta
 
+    def update_with_gyro(self, delta_s: float, omega_z: float, Ts: float) -> tuple[float, float, float]:
+        """
+        Igual que update() pero usa la velocidad angular del giróscopo (omega_z)
+        para el cambio de orientación en vez de los encoders.
+        Los encoders siguen calculando el desplazamiento lineal (delta_s).
+
+        Args:
+            delta_s:  desplazamiento lineal del paso (metros), de encoders.
+            omega_z:  velocidad angular alrededor del eje Z (rad/s), del giróscopo.
+            Ts:       período de muestreo (segundos).
+        """
+        delta_theta = float(omega_z) * float(Ts)
+        mid_theta = self.theta + delta_theta / 2.0
+        self.x += float(delta_s) * math.cos(mid_theta)
+        self.y += float(delta_s) * math.sin(mid_theta)
+        self.theta += delta_theta
+        return self.x, self.y, self.theta
+
     def pose(self) -> tuple[float, float, float]:
         return self.x, self.y, self.theta
 
