@@ -153,14 +153,15 @@ class AStarPlanner:
         for c, r in cells[1:]:
             waypoints.append(self.grid.cell_to_world(c, r))
 
-        return self._simplify(waypoints)
+        return waypoints  # No simplificar: waypoints celda-a-celda evitan deriva lateral en corredores
 
     def _simplify(
         self, waypoints: list[tuple[float, float]]
     ) -> list[tuple[float, float]]:
         """
-        Elimina puntos intermedios colineales para reducir el número de waypoints
-        y suavizar la trayectoria planificada.
+        Elimina puntos intermedios colineales.
+        Actualmente NO se usa: mantener todos los waypoints (c/5cm) evita que el
+        robot apunte a waypoints lejanos en diagonal, reduciendo deriva hacia paredes.
         """
         if len(waypoints) <= 2:
             return waypoints

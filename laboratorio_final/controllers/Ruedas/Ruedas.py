@@ -81,23 +81,32 @@ EXPLORE_SECONDS: float = 60.0
 # ---------------------------------------------------------------------------
 # Parámetros de seguimiento de waypoints (control proporcional)
 # ---------------------------------------------------------------------------
-WAYPOINT_TOLERANCE_M: float = 0.08  # Distancia al waypoint para considerarlo alcanzado
+WAYPOINT_TOLERANCE_M: float = 0.04  # Distancia al waypoint para considerarlo alcanzado
 HEADING_KP: float = 2.5             # Ganancia proporcional para el error de orientación
 WAYPOINT_KV: float = 2.0            # Ganancia de velocidad lineal en función de distancia
 
 # ---------------------------------------------------------------------------
 # Umbral de llegada a la meta final
 # ---------------------------------------------------------------------------
-GOAL_TOLERANCE_M: float = 0.08
+GOAL_TOLERANCE_M: float = 0.05   # Robot debe estar a ≤ 5cm del marcador
 
 # ---------------------------------------------------------------------------
 # Parámetros de la capa reactiva
 # ---------------------------------------------------------------------------
-SAFE_DISTANCE_M = 0.17
+PRECAUTION_DISTANCE_M = 0.20  # Reducir velocidad al aproximarse a obstáculo
+
+# Umbrales de parada de emergencia (lecturas RAW, sin filtro Kalman).
+# Los cálculos asumen ángulos de sensor del e-puck:
+#   ps0/ps7 a ±22.5°: leen D_pared / cos(22.5°) ≈ 1.08·D para pared frontal
+#   ps1/ps6 a ±67.5°: leen D_pared / sin(67.5°) ≈ 1.08·D para pared lateral
+# La ruta A* (inflación=6cm) mantiene el robot a ≥6.5cm de paredes → ps1 lee ~7cm.
+# Con STOP_SIDE_M=6cm: no trigger en ruta planificada; sí si robot deriva >1cm.
+STOP_FRONT_M = 0.10  # ps0/ps7 raw: detecta pared frontal a ~9.3cm real
+STOP_SIDE_M  = 0.06  # ps1/ps6 raw: detecta pared lateral a ~5.5cm real (sin falso positivo en ruta)
 SIDE_DECISION_DEADBAND_M = 0.01
 FRONT_TIEBREAK_DEADBAND_M = 0.005
 
-FORWARD_SPEED_FACTOR = 0.55
+FORWARD_SPEED_FACTOR = 0.35   # Reducido para dar más tiempo de reacción en corredores
 TURN_SPEED_FACTOR = 0.35
 TURN_MIN_SPEED_FACTOR = 0.08
 
@@ -134,10 +143,16 @@ TURN_POSITION_TOLERANCE_RAD = 0.005
 # cada arena.
 # ---------------------------------------------------------------------------
 SCENARIOS: dict[str, dict[str, tuple[float, ...]]] = {
+    # Centros de celda exactos (cell_size=0.05m, arena 1×1m centrada en origen):
+    # start (-0.35,0.35) → col=3,row=17 → centro=(-0.325, 0.375)
+    # goal  (0.35,-0.35) → col=17,row=3 → centro=(0.375, -0.325)
     "lab2_simple.wbt": {
-        "start": (-0.35, 0.35, -math.pi / 2.0),
-        "goal": (0.35, -0.35),
+        "start": (-0.325, 0.375, -math.pi / 2.0),
+        "goal": (0.375, -0.325),
     },
+    # Centros de celda exactos (cell_size=0.05m, arena 3×3m centrada en origen):
+    # start (-1.375,-1.375) → col=2,row=2   → centro=(-1.375,-1.375) ✓
+    # goal  (1.375,1.375)   → col=57,row=57 → centro=(1.375,1.375)   ✓
     "escenario_complejo.wbt": {
         "start": (-1.375, -1.375, math.pi / 2.0),
         "goal": (1.375, 1.375),
@@ -193,6 +208,9 @@ class NavState:
 
     # Replanificación tras evasión de obstáculo dinámico
     replan_pending: bool = False
+
+    # Cooldown tras insertar waypoint de recuperación (evita insertar múltiples seguidos)
+    evasion_cooldown: int = 0
 
     # Métricas
     dist_to_goal: float = math.inf
@@ -250,6 +268,77 @@ def _start_turn_position_control(
     )
 
 
+def _dist_point_to_segment(
+    px: float, py: float,
+    ax: float, ay: float,
+    bx: float, by: float,
+) -> float:
+    """Distancia del punto (px,py) al segmento (ax,ay)→(bx,by)."""
+    dx, dy = bx - ax, by - ay
+    len_sq = dx * dx + dy * dy
+    if len_sq < 1e-10:
+        return math.hypot(px - ax, py - ay)
+    t = max(0.0, min(1.0, ((px - ax) * dx + (py - ay) * dy) / len_sq))
+    return math.hypot(px - (ax + t * dx), py - (ay + t * dy))
+
+
+def _find_recovery_cell(
+    grid: OccupancyGrid,
+    robot_x: float,
+    robot_y: float,
+    robot_theta: float,
+    next_wp_x: float,
+    next_wp_y: float,
+    search_radius_m: float = 0.30,
+) -> tuple[float, float] | None:
+    """
+    Cuando el robot está a punto de chocar, busca la celda libre más cercana
+    a la ruta planificada (segmento robot→siguiente_waypoint) para esquivar.
+    Prioriza celdas laterales o frontales a la trayectoria, no celdas detrás.
+    Retorna coordenadas mundo (x, y) o None si no hay opción viable.
+    """
+    rob_col, rob_row = grid.world_to_cell(robot_x, robot_y)
+    radius_cells = int(search_radius_m / grid.cell_size) + 1
+    desired_heading = math.atan2(next_wp_y - robot_y, next_wp_x - robot_x)
+
+    best_score = math.inf
+    best_wx, best_wy = None, None
+
+    for dr in range(-radius_cells, radius_cells + 1):
+        for dc in range(-radius_cells, radius_cells + 1):
+            nc, nr = rob_col + dc, rob_row + dr
+            if not grid.is_free(nc, nr):
+                continue
+            wx, wy = grid.cell_to_world(nc, nr)
+            dist_robot = math.hypot(wx - robot_x, wy - robot_y)
+            # Ignorar demasiado cerca (misma celda) o fuera de radio
+            if dist_robot < grid.cell_size or dist_robot > search_radius_m:
+                continue
+
+            # Ángulo de esta celda respecto al robot
+            cell_angle = math.atan2(wy - robot_y, wx - robot_x)
+            angle_diff = abs(math.atan2(
+                math.sin(cell_angle - desired_heading),
+                math.cos(cell_angle - desired_heading),
+            ))
+            # Descartar celdas casi opuestas a la dirección deseada (no retroceder)
+            if angle_diff > math.radians(150):
+                continue
+
+            # Distancia de la celda candidata a la línea robot→waypoint
+            path_dist = _dist_point_to_segment(
+                wx, wy, robot_x, robot_y, next_wp_x, next_wp_y,
+            )
+
+            # Score: priorizar cercanía a la ruta, penalizar levemente distancia al robot
+            score = path_dist * 3.0 + dist_robot * 0.5
+            if score < best_score:
+                best_score = score
+                best_wx, best_wy = wx, wy
+
+    return (best_wx, best_wy) if best_wx is not None else None
+
+
 def _decide_turn_direction(
     *,
     side_left_m: float,
@@ -303,6 +392,7 @@ def _reactive_step(
     """
     if nav.state == STATE_FORWARD or nav.state == STATE_WAYPOINT_FOLLOW:
         if front_used_m <= SAFE_DISTANCE_M:
+            # Emergencia: robot muy cerca de obstáculo. Giro directo (sin backup).
             prev_turn_dir = nav.last_turn_dir
             nav.turn_dir, decision_basis, delta_side_m = _decide_turn_direction(
                 side_left_m=side_left_m,
@@ -316,23 +406,13 @@ def _reactive_step(
             nav.last_turn_dir = nav.turn_dir
 
             print(
-                f"Giro reactivo | front={front_used_m:.3f}m | "
-                f"elige={nav.turn_dir} (basis={decision_basis}, "
-                f"prev={prev_turn_dir or '-'}) | fase={nav.phase}"
+                f"Giro emergencia | front={front_used_m:.3f}m | "
+                f"elige={nav.turn_dir} (basis={decision_basis}, prev={prev_turn_dir or '-'})"
             )
 
-            nav.backup_remaining = int(BACKUP_HOLD_STEPS)
+            # Giro directo sin backup
             nav.turn_travelled_wheel_rad = 0.0
-            nav.state = STATE_BACKUP
-            robot.wheels.backward(BACKUP_SPEED_FACTOR)
-
-    elif nav.state == STATE_BACKUP:
-        nav.turn_travelled_wheel_rad = 0.0
-        robot.wheels.backward(BACKUP_SPEED_FACTOR)
-        nav.backup_remaining -= 1
-        if nav.backup_remaining <= 0:
             nav.state = STATE_TURN
-            nav.turn_travelled_wheel_rad = 0.0
             _start_turn_position_control(
                 robot=robot, nav=nav,
                 enc_left_rad=enc_left_rad, enc_right_rad=enc_right_rad,
@@ -373,11 +453,14 @@ def _waypoint_step(
     x: float,
     y: float,
     theta: float,
+    front_dist_m: float = math.inf,
+    side_left_m: float = math.inf,
+    side_right_m: float = math.inf,
 ) -> NavState:
     """
     Avanza hacia el waypoint actual.  Cuando se alcanza, avanza al siguiente.
     Usa control proporcional: gira hacia el waypoint y avanza con velocidad
-    reducida si el error de orientación es grande.
+    reducida si el error de orientación es grande o hay obstáculos cercanos.
     """
     if not nav.waypoints or nav.waypoint_idx >= len(nav.waypoints):
         robot.stop()
@@ -386,8 +469,13 @@ def _waypoint_step(
     wp_x, wp_y = nav.waypoints[nav.waypoint_idx]
     dist = math.hypot(wp_x - x, wp_y - y)
 
-    # Avanzar al siguiente waypoint si ya se llegó al actual
-    while dist <= WAYPOINT_TOLERANCE_M:
+    # Avanzar al siguiente waypoint si ya se llegó al actual.
+    # El último waypoint usa GOAL_TOLERANCE_M (5cm) en vez de WAYPOINT_TOLERANCE_M (4cm):
+    # así el check de meta (dist_to_goal ≤ 5cm) coincide con cuándo se consume el WP final.
+    def _wp_tol(idx: int) -> float:
+        return GOAL_TOLERANCE_M if idx == len(nav.waypoints) - 1 else WAYPOINT_TOLERANCE_M
+
+    while dist <= _wp_tol(nav.waypoint_idx):
         nav.waypoint_idx += 1
         if nav.waypoint_idx >= len(nav.waypoints):
             robot.stop()
@@ -405,9 +493,20 @@ def _waypoint_step(
     omega = HEADING_KP * heading_error
     omega = max(-TURN_SPEED_FACTOR, min(TURN_SPEED_FACTOR, omega))
 
-    # Factor lineal: se reduce cuando el error de orientación es grande
-    fwd = FORWARD_SPEED_FACTOR * max(0.0, 1.0 - abs(heading_error) / math.pi)
-    fwd = min(fwd, WAYPOINT_KV * dist)  # también se reduce cerca del waypoint
+    # Factor lineal: si el error de orientación supera 30°, giro en el lugar.
+    # 30° (antes 60°) da más precisión de orientación antes de avanzar;
+    # evita que el robot se desvíe hacia paredes al corregir trayectorias curvas.
+    HEADING_STOP_RAD = math.radians(30)
+    if abs(heading_error) >= HEADING_STOP_RAD:
+        fwd = 0.0
+    else:
+        fwd = FORWARD_SPEED_FACTOR * (1.0 - abs(heading_error) / HEADING_STOP_RAD)
+        fwd = min(fwd, WAYPOINT_KV * dist)  # también se reduce cerca del waypoint
+
+        # Reducción de velocidad por proximidad a obstáculos (ralentizar, no detener)
+        if front_dist_m < PRECAUTION_DISTANCE_M:
+            front_factor = max(0.3, front_dist_m / PRECAUTION_DISTANCE_M)
+            fwd *= front_factor
 
     left_factor  = fwd - omega
     right_factor = fwd + omega
@@ -643,6 +742,27 @@ def main() -> None:
         if not nav.waypoints:
             print("ERROR: no existe ruta inicio → meta en el mapa precargado.")
 
+    # Imprimir grilla ASCII con inicio (S), meta (G) y ruta planificada (*).
+    # Nota: la resolución es 5 cm/celda (necesaria para corredores de 25 cm con
+    # inflación de 6 cm). Una cuadrícula visual de 24×24 usaría 12.5 cm/celda,
+    # dejando solo ~1 celda libre en corredores de 25 cm: insuficiente para A*.
+    s_cell = grid.world_to_cell(start_x, start_y)
+    g_cell = grid.world_to_cell(goal_x, goal_y)
+    route_cells: list[tuple[int, int]] = []
+    if nav.waypoints:
+        prev_c: tuple[int, int] | None = None
+        for wx, wy in nav.waypoints:
+            c = grid.world_to_cell(wx, wy)
+            if prev_c is not None:
+                route_cells.extend(grid._bresenham(prev_c[0], prev_c[1], c[0], c[1]))
+            prev_c = c
+        if prev_c is not None:
+            route_cells.append(prev_c)
+    print(f"\n=== Grilla de ocupación ({grid.cols}×{grid.rows} celdas, {GRID_CELL_M*100:.0f}cm/celda) ===")
+    print(grid.to_ascii(start=s_cell, goal=g_cell, path=route_cells))
+    print(f"S=inicio ({start_x:.3f},{start_y:.3f})  G=meta ({goal_x:.3f},{goal_y:.3f})")
+    print(f"Waypoints: {len(nav.waypoints)}\n")
+
     log_file = _log_path(CONTROL_SOURCE)
 
     fieldnames = [
@@ -792,51 +912,64 @@ def main() -> None:
                 dest_x = start_x if nav.phase == PHASE_RETURN else goal_x
                 dest_y = start_y if nav.phase == PHASE_RETURN else goal_y
 
-                prev_state = nav.state
+                # Lecturas RAW de sensores para detección de colisión (sin lag del filtro Kalman).
+                # ps0/ps7 → frontal ±22.5°. ps1/ps6 → diagonal ±67.5° (detectan paredes laterales).
+                raw_front_m = min(float(distances_m[0]), float(distances_m[7]))
+                d1_raw = float(distances_m[1])
+                d6_raw = float(distances_m[6])
+                raw_diag_m = min(
+                    (d for d in (d1_raw, d6_raw) if not math.isnan(d) and not math.isinf(d)),
+                    default=math.inf,
+                )
+                # diag_min_m limpio para controlar velocidad en _waypoint_step
+                diag_min_m = raw_diag_m
 
-                # La evasión reactiva interrumpe el waypoint follower
-                if nav.state in (STATE_BACKUP, STATE_TURN):
-                    nav = _reactive_step(
-                        robot=robot, nav=nav,
-                        front_used_m=front_used_m,
-                        front_left_m=front_left_m, front_right_m=front_right_m,
-                        side_left_m=side_left_m, side_right_m=side_right_m,
-                        side_left_raw=side_left_raw, side_right_raw=side_right_raw,
-                        enc_left_rad=enc_left_rad, enc_right_rad=enc_right_rad,
-                        post_turn_state=STATE_WAYPOINT_FOLLOW,
-                    )
-                elif front_used_m <= SAFE_DISTANCE_M:
-                    # Primera detección de obstáculo dinámico: marcar en grilla
-                    if nav.state == STATE_WAYPOINT_FOLLOW and not nav.replan_pending:
-                        obs_x = x + front_used_m * math.cos(theta)
-                        obs_y = y + front_used_m * math.sin(theta)
-                        grid.mark_rect_obstacle(obs_x, obs_y, 0.0, 0.0)
-                        nav.replan_pending = True
+                # Condición de parada: pared frontal < 10cm OR pared lateral < 6cm (ambas RAW).
+                # Estos umbrales permiten navegar sin false-positive junto a paredes del plan A*
+                # (que quedan a ≥6.5cm), pero detienen al robot si se desvía.
+                stop_now = (
+                    (raw_front_m < STOP_FRONT_M)
+                    or (raw_diag_m < STOP_SIDE_M)
+                )
+
+                if stop_now:
+                    if nav.evasion_cooldown <= 0:
+                        # Primera detección: parar y replanificar A* desde posición actual.
+                        robot.stop()
+                        trigger = "front" if raw_front_m < STOP_FRONT_M else "lateral"
                         print(
-                            f"Obstáculo dinámico en ({obs_x:.2f},{obs_y:.2f}). "
-                            f"Marcado en grilla; replanificará tras evasión."
+                            f"PARADA [{trigger}] | front_raw={raw_front_m:.3f}m "
+                            f"diag_raw={raw_diag_m:.3f}m | "
+                            f"pose=({x:.2f},{y:.2f},{math.degrees(theta):.0f}°) | "
+                            f"Replanificando A*..."
                         )
-                    nav = _reactive_step(
-                        robot=robot, nav=nav,
-                        front_used_m=front_used_m,
-                        front_left_m=front_left_m, front_right_m=front_right_m,
-                        side_left_m=side_left_m, side_right_m=side_right_m,
-                        side_left_raw=side_left_raw, side_right_raw=side_right_raw,
-                        enc_left_rad=enc_left_rad, enc_right_rad=enc_right_rad,
-                        post_turn_state=STATE_WAYPOINT_FOLLOW,
-                    )
+                        nav.evasion_cooldown = 30
+                        nav = _plan_route(
+                            planner, nav, x, y, dest_x, dest_y,
+                            nav.phase, "replan-parada"
+                        )
+                    else:
+                        # En cooldown post-replan: seguir el nuevo plan (el waypoint debería
+                        # alejar al robot de la pared). Solo parar si realmente toca (<3cm).
+                        nav.evasion_cooldown -= 1
+                        if raw_front_m < 0.03 or raw_diag_m < 0.03:
+                            robot.stop()  # contacto físico inminente
+                        else:
+                            nav = _waypoint_step(
+                                robot, nav, x, y, theta,
+                                front_dist_m=min(front_used_m, diag_min_m),
+                                side_left_m=side_left_m,
+                                side_right_m=side_right_m,
+                            )
                 else:
-                    nav = _waypoint_step(robot, nav, x, y, theta)
-
-                # Replanificar desde posición actual tras completar el giro reactivo
-                if (
-                    nav.replan_pending
-                    and prev_state == STATE_TURN
-                    and nav.state == STATE_WAYPOINT_FOLLOW
-                ):
-                    nav.replan_pending = False
-                    nav = _plan_route(
-                        planner, nav, x, y, dest_x, dest_y, nav.phase, "replan"
+                    # Sin obstáculo: seguir plan A*.
+                    if nav.evasion_cooldown > 0:
+                        nav.evasion_cooldown -= 1
+                    nav = _waypoint_step(
+                        robot, nav, x, y, theta,
+                        front_dist_m=min(front_used_m, diag_min_m),
+                        side_left_m=side_left_m,
+                        side_right_m=side_right_m,
                     )
 
                 # Verificar si se completó la ruta de esta fase
@@ -849,19 +982,30 @@ def main() -> None:
                         )
                         robot.stop()
                         nav = _plan_route(
-                            planner, nav, x, y,
-                            goal_x, goal_y,
-                            PHASE_NAV, "meta",
+                            planner, nav, x, y, goal_x, goal_y, PHASE_NAV, "meta",
                         )
                     elif nav.phase == PHASE_NAV:
-                        nav.phase = PHASE_DONE
-                        nav.state = STATE_GOAL_REACHED
-                        robot.stop()
-                        print(
-                            f"\n>>> META ALCANZADA | "
-                            f"pose=({x:.3f},{y:.3f},{math.degrees(theta):.1f}°) | "
-                            f"dist={nav.dist_to_goal:.4f}m | t={time_s:.1f}s"
-                        )
+                        # Declarar meta solo con distancia euclidiana estricta
+                        if nav.dist_to_goal <= GOAL_TOLERANCE_M:
+                            nav.phase = PHASE_DONE
+                            nav.state = STATE_GOAL_REACHED
+                            robot.stop()
+                            print(
+                                f"\n>>> META ALCANZADA | "
+                                f"pose=({x:.3f},{y:.3f},{math.degrees(theta):.1f}°) | "
+                                f"dist={nav.dist_to_goal:.4f}m | t={time_s:.1f}s"
+                            )
+                        else:
+                            # Waypoints consumidos pero el robot no está en la celda meta:
+                            # replanificar A* desde la posición actual.
+                            print(
+                                f"WARN: Waypoints consumidos pero lejos de meta "
+                                f"(dist={nav.dist_to_goal:.2f}m, celda=({r_col},{r_row}) "
+                                f"vs meta=({g_col},{g_row})). Replanificando..."
+                            )
+                            nav = _plan_route(
+                                planner, nav, x, y, goal_x, goal_y, PHASE_NAV, "replan-goal"
+                            )
 
             elif nav.phase == PHASE_DONE:
                 # Meta alcanzada, robot detenido
