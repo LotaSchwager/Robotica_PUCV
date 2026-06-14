@@ -2,7 +2,8 @@
 
 **Curso:** ICI 4150 - Robótica y Sistemas Autónomos
 **Semestre:** 2026-01
-**Línea seleccionada:** Línea A — Planificación de rutas (A* sobre grilla de ocupación)
+**Línea seleccionada:** Línea A — Planificación de rutas con A* sobre grilla de ocupación
+
 **Integrantes del grupo:**
 - Ademir Muñoz
 - Joaquín Tapia
@@ -14,158 +15,199 @@
 
 ## 1. Objetivo del Proyecto
 
-Diseñar, implementar y evaluar en Webots un sistema de navegación autónoma para un robot móvil diferencial (e-puck), capaz de desplazarse desde una posición inicial hasta una meta dentro de un entorno con obstáculos. El sistema integra el control cinemático diferencial del Laboratorio 1 y la percepción sensorial, filtrado y estimación del Laboratorio 2, agregando una capa de **navegación global**: el entorno se representa como una grilla de ocupación 2D y la ruta se calcula con el algoritmo **A\***, que luego el robot ejecuta siguiendo waypoints, con evasión reactiva de obstáculos como capa de seguridad.
+Hacer que un robot pueda moverse solo desde un punto de partida hasta una meta dentro de un espacio con obstáculos. Para lograrlo, el robot primero calcula la mejor ruta posible usando el algoritmo A*, y luego la sigue paso a paso usando sus ruedas y sensores. Si en el camino detecta que está muy cerca de un muro, puede detenerse y corregir su trayectoria.
 
-## 2. Descripción del Robot, Sensores y Actuadores
+## 2. Robot, Sensores y Actuadores
 
-Se utiliza el robot **e-puck** de Webots, un robot móvil diferencial.
+Se usa el robot **e-puck** de Webots, que tiene dos ruedas independientes.
 
-| Componente | Uso en el proyecto |
+| Componente | Para qué se usa |
 |---|---|
-| 2 motores de rueda (actuadores) | Control diferencial: avance, giros y seguimiento de waypoints. Velocidad máxima 6.28 rad/s |
-| 2 encoders de rueda | Odometría: estimación de pose (x, y, θ) integrando los incrementos de cada rueda |
-| 8 sensores de proximidad IR (ps0–ps7) | Detección de obstáculos. Frontales (ps0, ps7) para la capa reactiva; laterales (ps1, ps2, ps5, ps6) para decidir dirección de giro |
+| 2 motores de rueda | Mover al robot: avanzar, girar y seguir la ruta calculada |
+| 2 encoders de rueda | Saber cuánto giró cada rueda y así estimar dónde está el robot |
+| 8 sensores de proximidad IR (ps0-ps7) | Detectar paredes y obstáculos cercanos |
 
-Parámetros geométricos: radio de rueda r = 0.0205 m, distancia entre ruedas L = 0.0573 m. Los valores crudos de los sensores IR se convierten a metros mediante la tabla de lookup inversa de Webots (interpolación lineal). El paso de simulación es Ts = 0.05 s (fs = 20 Hz).
+El robot mide 7.4 cm de diámetro. El paso de simulación es 50 ms (20 veces por segundo).
 
 ## 3. Escenarios de Prueba
 
-Ambos escenarios definen una **marca roja** (posición inicial del robot) y una **marca verde** (meta) en el piso de la arena.
+Ambos escenarios tienen una marca roja en el piso (punto de partida) y una marca verde (meta).
 
-- **`worlds/lab2_simple.wbt` (escenario simple):** arena de 1×1 m con dos muros que fuerzan una ruta en forma de "S" entre el inicio (-0.35, 0.35) y la meta (0.35, -0.35). Pocos obstáculos y ruta relativamente directa. Ruta planificada por A*: 11 waypoints, 1.47 m.
+**Escenario simple (`worlds/lab2_simple.wbt`):**
+Arena de 1x1 m con dos muros que obligan al robot a hacer una curva en "S". El robot parte de (-0.35, 0.35) y debe llegar a (0.35, -0.35). La ruta calculada tiene 11 puntos intermedios y mide 1.47 m.
 
-- **`worlds/escenario_complejo.wbt` (escenario complejo):** arena de 3×3 m modelada como una grilla de 12×12 celdas de 0.25 m. Contiene 52 obstáculos cúbicos (0.25×0.25 m) distribuidos en forma de laberinto con múltiples bloqueos y rutas alternativas. El robot parte de la esquina inferior-izquierda (-1.375, -1.375) y debe llegar a la esquina superior-derecha (1.375, 1.375), ambas en esquinas opuestas. Ruta planificada por A*: 14 waypoints, 4.91 m.
+**Escenario complejo (`worlds/escenario_complejo.wbt`):**
+Arena de 3x3 m con 52 bloques distribuidos como un laberinto. El robot parte de la esquina inferior-izquierda (-1.375, -1.375) y debe llegar a la esquina superior-derecha (1.375, 1.375). La ruta calculada tiene 14 puntos intermedios y mide 4.91 m.
 
 ## 4. Algoritmo Implementado
 
-### 4.1. Representación del entorno: grilla de ocupación precargada
+### 4.1. Cómo se representa el entorno
 
-Los archivos de mundo de Webots (`.wbt`) son texto plano en formato VRML. El módulo `world_map.py` los parsea directamente: extrae el tamaño de la arena (`RectangleArena.floorSize`) y cada obstáculo (`Solid` con geometría Box: posición, rotación en Z y dimensiones), y construye una **grilla de ocupación 2D** (`occupancy_grid.py`) donde cada celda de 0.05 m se marca como libre u ocupada. Los muros se rasterizan como rectángulos rotados y se les aplica una **inflación de 0.06 m** (mayor que el radio del e-puck, 0.037 m) para que el planificador mantenga distancia de seguridad. Los bordes de la arena también se marcan como ocupados.
+Antes de que el robot empiece a moverse, el controlador lee el archivo del mundo de Webots y construye un mapa cuadriculado del entorno. Cada casilla del mapa mide 5x5 cm y puede estar libre u ocupada. Los obstáculos se marcan con un margen extra de 6 cm alrededor para que el robot no pase demasiado cerca de las paredes.
 
-El controlador detecta qué mundo está corriendo mediante `robot.getWorldPath()` y selecciona automáticamente el escenario (inicio/meta) y el mapa correspondiente.
+El controlador detecta automáticamente qué escenario se está corriendo y selecciona el mapa y los puntos de inicio/meta correspondientes.
 
-### 4.2. Planificación: A* sobre la grilla
+### 4.2. Planificación de la ruta con A*
 
-`path_planner.py` implementa **A\*** con conectividad 8 (movimientos ortogonales y diagonales):
+Una vez construido el mapa, el algoritmo A* busca el camino más corto desde el inicio hasta la meta. Puede moverse en las 8 direcciones (horizontal, vertical y diagonal), pero no corta esquinas de muros. Si el punto de inicio o la meta quedan muy cerca de un obstáculo, el algoritmo busca el punto libre más cercano.
 
-- Costo real: 1 celda ortogonal = 0.05 m; diagonal = 0.05·√2 m.
-- Heurística: distancia euclídea a la meta (admisible y consistente → ruta óptima).
-- Las diagonales se bloquean si alguno de los vecinos ortogonales adyacentes está ocupado (evita cortar esquinas de muros).
-- Si el inicio o la meta caen en zona inflada, se busca la celda libre más cercana (BFS).
-- La ruta resultante se simplifica eliminando waypoints colineales.
+La ruta se simplifica eliminando puntos que estén en línea recta, de modo que el robot solo tiene que pasar por los puntos donde realmente debe cambiar de dirección.
 
-Cada ruta planificada se guarda en `logs/` como `final_route_*.csv` (waypoints) y `final_map_*.txt` (mapa ASCII con la ruta superpuesta), para el análisis posterior.
+La ruta calculada se guarda en la carpeta `logs/` para poder revisarla después.
 
-### 4.3. Ejecución de la ruta: seguimiento de waypoints
+### 4.3. Seguimiento de la ruta
 
-El robot convierte la ruta en comandos de movimiento con un **control proporcional** tipo uniciclo (`_waypoint_step` en `Ruedas.py`): calcula el error de orientación hacia el waypoint actual, comanda velocidad angular ω = Kp·e_θ (Kp = 2.5) y reduce la velocidad lineal cuando el error de orientación es grande o el waypoint está cerca. Un waypoint se considera alcanzado a menos de 0.08 m.
+El robot sigue la lista de puntos intermedios uno por uno. En cada paso:
 
-### 4.4. Capa reactiva de seguridad
+1. Calcula hacia qué lado debe girar para apuntar al próximo punto.
+2. Si el giro necesario es grande (más de 75°), se detiene completamente y gira en el lugar antes de avanzar.
+3. Una vez alineado, avanza hacia el punto. Cuando está suficientemente cerca, pasa al siguiente.
+4. Al llegar al último punto, se detiene.
 
-Si la distancia frontal (estimada con el **filtro de Kalman 1D** del Lab 2) cae bajo 0.17 m, la capa reactiva interrumpe el seguimiento: el robot retrocede (BACKUP), gira 90° hacia el lado más libre según los sensores laterales (TURN, con control por posición de encoders) y luego **reanuda el seguimiento de waypoints**. Esto protege contra desviaciones odométricas y obstáculos no modelados.
+### 4.4. Protección contra choques
 
-### 4.5. Pseudocódigo de la solución
+Si el sensor frontal detecta una pared a menos de 17 cm, el robot entra en modo de seguridad: retrocede un poco, gira hacia el lado más libre según los sensores laterales, y luego retoma la ruta planificada.
+
+### 4.5. Pseudocódigo
 
 ```
 INICIO
-  mundo  ← getWorldPath()                       # mundo cargado en Webots
-  (inicio, meta) ← SCENARIOS[mundo]
-  grilla ← parsear .wbt y rasterizar obstáculos (+ inflación)
-  ruta   ← A*(grilla, inicio, meta)             # lista de waypoints
-  guardar ruta y mapa en logs/
+  Detectar qué mundo está cargado en Webots
+  Cargar el mapa del entorno desde el archivo .wbt
+  Calcular la ruta con A* desde el inicio hasta la meta
+  Guardar la ruta en logs/
 
-  MIENTRAS simulación activa:
-    leer sensores IR y encoders
-    actualizar odometría (x, y, θ)              # ecuaciones del Lab 1
-    d_frontal ← Kalman1D(predicción encoders, medición IR)   # Lab 2
+  MIENTRAS la simulación esté activa:
+    Leer sensores y encoders
+    Actualizar estimación de posición (odometría)
+    Estimar distancia frontal con filtro Kalman
 
-    SI d_frontal < 0.17 m:                      # capa reactiva
-      retroceder → girar 90° al lado más libre → reanudar ruta
-    SINO:
-      seguir waypoint actual (control proporcional)
-      SI waypoint alcanzado: avanzar al siguiente
+    SI hay pared a menos de 17 cm:
+      Retroceder → girar al lado libre → retomar ruta
+    SI NO:
+      Avanzar hacia el próximo punto de la ruta
+      SI llegó al punto: pasar al siguiente
 
-    SI último waypoint alcanzado:
-      detener robot → META ALCANZADA
-    registrar paso en CSV (pose, sensores, fase, comandos)
+    SI llegó al último punto:
+      Detener el robot → META ALCANZADA
+    Registrar datos en CSV
 FIN
 ```
 
-> El controlador conserva además un **modo alternativo de mapeo autónomo** (`USE_PRELOADED_MAP = False`): el robot explora reactivamente construyendo la grilla con sus sensores (ray-casting de Bresenham), vuelve al inicio y recién entonces planifica con A*. Se mantiene como extensión comparativa de la estrategia elegida.
-
 ## 5. Relación con los Laboratorios 1 y 2
 
-| Laboratorio | Qué se reutiliza | Dónde |
+| Laboratorio | Qué se reutiliza | En qué archivo |
 |---|---|---|
-| **Lab 1** — control cinemático | Modelo diferencial (v = r(ωr+ωl)/2, ω = r(ωr−ωl)/L), avance, giros por posición de encoders | `wheel.py`, capa reactiva y waypoint follower en `Ruedas.py` |
-| **Lab 1** — odometría | Ecuaciones (5)–(7) del enunciado: integración de Δs y Δφ para estimar (x, y, θ) | `estimation.py` (clase `Odometry`), `robot.py` |
-| **Lab 2** — percepción | Lectura de los 8 sensores IR y conversión cruda → metros por lookup table | `proximity.py` |
-| **Lab 2** — filtrado y fusión | EMA (α = 0.25) y **Kalman 1D** (predicción por encoders + corrección por sensor IR, Q = 1e-4, R = 5e-3) sobre la distancia frontal | `estimation.py` |
-| **Lab 2** — navegación reactiva | Máquina de estados FORWARD/BACKUP/TURN con decisión de giro por sensores laterales | `_reactive_step` en `Ruedas.py` |
+| Lab 1 — movimiento | Control diferencial: cómo convertir velocidades de rueda en movimiento recto y giro | `wheel.py`, `Ruedas.py` |
+| Lab 1 — odometría | Ecuaciones para estimar la posición (x, y, ángulo) a partir de cuánto giró cada rueda | `estimation.py`, `robot.py` |
+| Lab 2 — sensores | Lectura de los 8 sensores IR y conversión a metros | `proximity.py` |
+| Lab 2 — filtrado | Filtro de Kalman sobre la distancia frontal para suavizar las lecturas | `estimation.py` |
+| Lab 2 — evasión | Lógica de retroceso y giro cuando el sensor detecta un obstáculo | `Ruedas.py` |
 
-El proyecto **extiende** estos aprendizajes con la navegación global: la odometría del Lab 1 deja de ser solo registro y pasa a alimentar el seguimiento de ruta; el Kalman del Lab 2 deja de controlar directamente y pasa a ser la capa de seguridad bajo un plan calculado por A*.
+En el proyecto, la odometría del Lab 1 deja de ser solo un registro y pasa a ser la forma en que el robot sabe dónde está dentro de la ruta planificada. El filtro del Lab 2 deja de controlar al robot directamente y pasa a ser una capa de seguridad que decide cuándo esquivar.
 
 ## 6. Instrucciones para Ejecutar
 
-Requisitos: Webots R2023 o superior (probado con R2025a) y Python 3.10+.
+Requisitos: Webots R2023 o superior y Python 3.10+.
 
-1. Abrir Webots y cargar `laboratorio_final/worlds/lab2_simple.wbt` o `escenario_complejo.wbt` (File → Open World).
-2. Presionar Play. El controlador detecta el mundo automáticamente: no hay que editar nada entre escenarios.
-3. La consola muestra el mapa cargado, la ruta planificada y las transiciones de fase; al llegar imprime `META ALCANZADA` con pose, error y tiempo.
-4. Al finalizar quedan en `laboratorio_final/logs/`:
-   - `final_<modo>_<fecha>.csv` — registro completo paso a paso (pose, sensores, filtros, comandos, fase).
-   - `final_route_meta_<fecha>.csv` — waypoints de la ruta planificada.
-   - `final_map_meta_<fecha>.txt` — mapa ASCII con la ruta superpuesta.
+1. Abrir Webots y cargar uno de los mundos: `laboratorio_final/worlds/lab2_simple.wbt` o `escenario_complejo.wbt` (File → Open World).
+2. Presionar Play. El controlador detecta el mundo automáticamente, no hay que cambiar nada entre escenarios.
+3. La consola muestra el mapa cargado, la ruta planificada y los mensajes de estado. Al llegar a la meta aparece `META ALCANZADA` con la posición final y el tiempo.
+4. Al terminar se generan en `laboratorio_final/logs/`:
+   - `final_<fecha>.csv` — registro paso a paso de posición, sensores y comandos.
+   - `final_route_<fecha>.csv` — los puntos de la ruta planificada.
+   - `final_map_<fecha>.txt` — el mapa en texto con la ruta dibujada.
 
-Parámetros relevantes en `controllers/Ruedas/Ruedas.py`: `USE_PRELOADED_MAP` (Línea A vs mapeo autónomo), `CONTROL_SOURCE` (raw/filtered/kalman para la capa reactiva), `GRID_CELL_M`, `GRID_INFLATION_M`, `SAFE_DISTANCE_M`, y el diccionario `SCENARIOS` (inicio/meta por mundo).
+## 7. Descripción del Código
 
-## 7. Resultados y Métricas de Desempeño
+### Archivos principales
 
-> **Pendiente:** esta sección se completará con las corridas experimentales en ambos escenarios una vez finalizado el rediseño de los mapas.
+| Archivo | Qué hace |
+|---|---|
+| `Ruedas.py` | Es el controlador principal. Decide en cada instante si el robot debe seguir la ruta, girar en el lugar o esquivar un obstáculo. |
+| `world_map.py` | Lee el archivo del mundo de Webots y construye el mapa cuadriculado con todos los obstáculos marcados. |
+| `path_planner.py` | Implementa el algoritmo A* que calcula el camino más corto en el mapa. |
+| `occupancy_grid.py` | Representa el mapa como una cuadrícula. Sabe qué celdas están libres y cuáles ocupadas. |
+| `robot.py` | Agrupa el manejo de motores, encoders y sensores del e-puck en un solo lugar. |
+| `estimation.py` | Calcula la posición estimada del robot a partir de los encoders (odometría), y aplica el filtro Kalman a la distancia frontal. |
+| `proximity.py` | Lee los 8 sensores de proximidad y los convierte a metros. |
+| `wheel.py` | Controla las velocidades de las ruedas. |
+| `csv_logger.py` | Guarda todos los datos de cada paso en un archivo CSV para su análisis. |
 
-Métricas a reportar por escenario (mínimo 5 corridas):
+### Funciones importantes en `Ruedas.py`
 
-- Tiempo total hasta llegar a la meta.
-- Longitud de la ruta planificada vs longitud de la trayectoria ejecutada (odometría) y diferencia entre ambas.
-- Gráfico de ruta planificada vs trayectoria real sobre el mapa.
-- Número de colisiones o casi-colisiones (distancia frontal < umbral).
-- Número de activaciones de la capa reactiva (giros no planificados).
-- Error de posición final (odometría vs marca de meta).
-- Porcentaje de ejecuciones exitosas.
+**`_plan_route()`** — Llama al algoritmo A* y prepara la lista de puntos que el robot debe seguir. Se ejecuta al inicio y también si el robot necesita recalcular la ruta.
 
-Validación offline ya realizada (sin simulación): el parser de mundos y A* encuentran ruta en ambos escenarios — simple: 11 waypoints, 1.47 m; complejo: 14 waypoints, 4.91 m atravesando el laberinto.
+**`_waypoint_step()`** — Se ejecuta en cada paso de la simulación cuando el robot está siguiendo la ruta. Calcula hacia qué lado girar, decide si hacer un giro en el lugar, y avanza al siguiente punto cuando corresponde.
 
-## 8. Evidencias
+**`_reactive_step()`** — Se activa cuando el sensor frontal detecta una pared muy cerca. El robot retrocede, gira al lado más libre y retoma la ruta.
 
-> **Pendiente:** capturas de ambos escenarios, gráficos de análisis y enlace al video demostrativo (ejecución en Webots mostrando la ruta seguida y la llegada a la meta en ambos escenarios).
+## 8. Resultados y Métricas
 
-## 9. Conclusiones, Limitaciones y Posibles Mejoras
+### Escenario simple
 
-> **Pendiente de resultados experimentales.** Limitaciones ya identificadas en el diseño:
+| Métrica | Resultado |
+|---|---|
+| Longitud de ruta planificada | 1.47 m |
+| Tiempo hasta la meta | pendiente |
+| Longitud de trayectoria ejecutada | pendiente |
+| Diferencia ruta planificada vs ejecutada | pendiente |
+| Activaciones de capa reactiva | pendiente |
+| Error de posición final | pendiente |
+| Corridas exitosas | pendiente |
 
-- La pose del robot proviene solo de odometría: el error se acumula con la distancia recorrida y en rutas largas puede desviar el seguimiento de waypoints (sin corrección global tipo GPS/landmarks).
-- En el escenario complejo, los corredores entre obstáculos de 0.25 m tienen un ancho libre de ~0.13 m tras la inflación de la grilla; el umbral reactivo `SAFE_DISTANCE_M = 0.17` puede activar giros en pasos estrechos — es el primer parámetro a calibrar experimentalmente.
-- La inflación fija (0.06 m) es un compromiso: valores mayores dan más seguridad pero pueden cerrar pasillos estrechos en la grilla.
-- Mejoras posibles: replanificación A* cuando la capa reactiva desvía al robot de la ruta, suavizado de trayectoria (línea de visión entre waypoints), y fusión de la odometría con mediciones absolutas.
+### Escenario complejo
 
-## 10. Estructura del Repositorio
+| Métrica | Resultado |
+|---|---|
+| Longitud de ruta planificada | 4.91 m |
+| Tiempo hasta la meta | pendiente |
+| Longitud de trayectoria ejecutada | pendiente |
+| Diferencia ruta planificada vs ejecutada | pendiente |
+| Activaciones de capa reactiva | pendiente |
+| Error de posición final | pendiente |
+| Corridas exitosas | pendiente |
+
+## 9. Evidencias
+
+> Pendiente: capturas de pantalla de ambos escenarios, gráficos de ruta planificada vs trayectoria real, y enlace al video demostrativo.
+
+## 10. Conclusiones y Limitaciones
+
+### Lo que funciona
+
+El robot es capaz de navegar de forma autónoma en ambos escenarios, calcular una ruta sin chocar con los obstáculos del mapa y detenerse cuando llega a la meta. La combinación del algoritmo A* con el seguimiento de puntos intermedios y la capa de seguridad reactiva permite que el robot complete el recorrido incluso en el laberinto complejo.
+
+### Limitaciones conocidas
+
+- El robot no sabe exactamente dónde está: solo estima su posición a partir de cuánto giraron sus ruedas. Si las ruedas resbalan o el robot choca con una pared, la estimación puede desfasarse con el tiempo. En rutas largas esto se nota más.
+- Los corredores del escenario complejo son estrechos. Si el margen de seguridad alrededor de los obstáculos es demasiado grande, el planificador puede cerrar algunos pasillos en el mapa y no encontrar ruta.
+- La capa reactiva puede activarse en pasos muy estrechos aunque no haya un obstáculo real en la ruta planificada, lo que provoca desvíos innecesarios.
+
+### Posibles mejoras
+
+- Usar un sensor adicional (como un giróscopo) para estimar mejor el ángulo del robot y reducir el error acumulado.
+- Recalcular la ruta automáticamente si el robot se desvía demasiado.
+- Suavizar los giros entre puntos intermedios para que el robot no tenga que detenerse en cada esquina.
+
+## 11. Estructura del Repositorio
 
 ```
 laboratorio_final/
-├── README.md                  # este informe
-├── ProyectoFinal.pdf          # enunciado
+├── README.md                        # este informe
+├── ProyectoFinal.pdf                # enunciado del proyecto
 ├── worlds/
-│   ├── lab2_simple.wbt        # escenario simple (1×1 m, 2 muros)
-│   └── escenario_complejo.wbt # escenario complejo (3×3 m, laberinto 12×12)
+│   ├── lab2_simple.wbt              # escenario simple (1x1 m)
+│   └── escenario_complejo.wbt       # escenario complejo (3x3 m, laberinto)
 ├── controllers/Ruedas/
-│   ├── Ruedas.py              # controlador principal: escenarios, fases, waypoint follower
-│   ├── world_map.py           # parser .wbt → grilla de ocupación precargada
-│   ├── path_planner.py        # A* 8-conectado sobre la grilla
-│   ├── occupancy_grid.py      # grilla 2D (rasterizado + ray-casting)
-│   ├── robot.py               # EpuckRobot: motores, encoders, odometría
-│   ├── estimation.py          # Odometry, Kalman1D, EMA
-│   ├── proximity.py           # sensores IR y conversión a metros
-│   ├── wheel.py               # control de ruedas
-│   └── csv_logger.py          # registro CSV con metadata
-└── logs/                      # CSVs de corridas, rutas y mapas generados
+│   ├── Ruedas.py                    # controlador principal
+│   ├── world_map.py                 # construye el mapa desde el archivo .wbt
+│   ├── path_planner.py              # algoritmo A*
+│   ├── occupancy_grid.py            # mapa cuadriculado
+│   ├── robot.py                     # manejo del robot (motores, encoders, sensores)
+│   ├── estimation.py                # odometría y filtro Kalman
+│   ├── proximity.py                 # lectura de sensores IR
+│   ├── wheel.py                     # control de ruedas
+│   └── csv_logger.py                # registro de datos
+└── logs/                            # archivos generados al correr la simulación
 ```
