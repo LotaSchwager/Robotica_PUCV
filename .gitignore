@@ -7,7 +7,7 @@ __pycache__/
 Thumbs.db
 
 # CSV files
-*.csv
+#*.csv
 # Backup files
 *.backup
 # El env de jupyter
