@@ -149,46 +149,75 @@ Requisitos: Webots R2023 o superior y Python 3.10+.
 | Métrica | Resultado |
 |---|---|
 | Longitud de ruta planificada | 1.47 m |
-| Tiempo hasta la meta | pendiente |
-| Longitud de trayectoria ejecutada | pendiente |
-| Diferencia ruta planificada vs ejecutada | pendiente |
-| Activaciones de capa reactiva | pendiente |
-| Error de posición final | pendiente |
-| Corridas exitosas | pendiente |
+| Tiempo hasta la meta | 265.4 s |
+| Longitud de trayectoria ejecutada | 1.56 m |
+| Diferencia ruta planificada vs ejecutada | +0.10 m |
+| Activaciones de capa reactiva | 0 |
+| Error de posición final | 0.050 m |
+| Corridas exitosas | 1/1 |
 
 ### Escenario complejo
 
-| Métrica | Resultado |
-|---|---|
-| Longitud de ruta planificada | 4.91 m |
-| Tiempo hasta la meta | pendiente |
-| Longitud de trayectoria ejecutada | pendiente |
-| Diferencia ruta planificada vs ejecutada | pendiente |
-| Activaciones de capa reactiva | pendiente |
-| Error de posición final | pendiente |
-| Corridas exitosas | pendiente |
+Se ejecutaron dos rutas distintas en el laberinto complejo.
+
+| Métrica | Ruta 1 | Ruta 2 |
+|---|---|---|
+| Longitud de ruta planificada | 5.57 m | 4.91 m |
+| Tiempo hasta la meta | 613.4 s | 330.9 s |
+| Longitud de trayectoria ejecutada | 5.84 m | 4.91 m |
+| Diferencia ruta planificada vs ejecutada | +0.27 m | −0.01 m |
+| Activaciones de capa reactiva | 0 | 0 |
+| Error de posición final | 0.050 m | 0.050 m |
+| Corridas exitosas | 1/1 | 1/1 |
 
 ## 9. Evidencias
 
-> Pendiente: capturas de pantalla de ambos escenarios, gráficos de ruta planificada vs trayectoria real, y enlace al video demostrativo.
+### Gráficos de ruta planificada vs trayectoria real
+
+A continuación se muestran las rutas calculadas por A* (azul) y las trayectorias que efectivamente ejecutó el robot según la odometría (rojo). En los tres casos el robot alcanzó la meta sin activar la capa reactiva de emergencia.
+
+**Escenario simple**
+
+![Ruta planificada vs trayectoria real - escenario simple](Analisis/grafico_simple_ruta_simple.png)
+
+**Escenario complejo - ruta 1**
+
+![Ruta planificada vs trayectoria real - escenario complejo ruta 1](Analisis/grafico_complejo_ruta_1_compleja.png)
+
+**Escenario complejo - ruta 2**
+
+![Ruta planificada vs trayectoria real - escenario complejo ruta 2](Analisis/grafico_complejo_ruta_2_compleja.png)
+
+### Videos demostrativos
+
+- **Ruta compleja:** https://drive.google.com/file/d/1gbLmn8-T5ZekhGfHdwwiTFYVOk-_Ie0I/view?usp=sharing
+- **Ruta simple:** https://drive.google.com/file/d/1MbFThTrjMhqq_SHTbpCCpoYwOkAvJ_Ts/view?usp=sharing
+
+### Otros archivos de evidencia
+
+- El análisis estadístico completo, incluyendo comparativas entre escenarios, evolución temporal, sensores y odometría, está en `Analisis/Analisis_Proyecto_Final.ipynb`.
+- Las métricas resumidas se exportan automáticamente a `Analisis/metricas_resumen.csv`.
 
 ## 10. Conclusiones y Limitaciones
 
 ### Lo que funciona
 
-El robot es capaz de navegar de forma autónoma en ambos escenarios, calcular una ruta sin chocar con los obstáculos del mapa y detenerse cuando llega a la meta. La combinación del algoritmo A* con el seguimiento de puntos intermedios y la capa de seguridad reactiva permite que el robot complete el recorrido incluso en el laberinto complejo.
+- El robot navegó de forma autónoma en los tres casos analizados (escenario simple y dos rutas del escenario complejo), alcanzando la meta con un error final de aproximadamente 5 cm.
+- El algoritmo A* generó rutas libres de colisiones y el seguimiento de waypoints mantuvo la trayectoria real muy cercana a la planificada (desviación media ≤ 2.5 cm).
+- No se activó la capa reactiva de emergencia en ninguna corrida; las lecturas frontales crudas nunca bajaron de 10 cm, por lo que el robot mantuvo margen de seguridad.
+- El filtro de Kalman suavizó las lecturas de distancia frontal, estabilizando la percepción durante toda la navegación.
 
 ### Limitaciones conocidas
 
-- El robot no sabe exactamente dónde está: solo estima su posición a partir de cuánto giraron sus ruedas. Si las ruedas resbalan o el robot choca con una pared, la estimación puede desfasarse con el tiempo. En rutas largas esto se nota más.
+- El robot no sabe exactamente dónde está: solo estima su posición a partir de cuánto giraron sus ruedas. En la ruta compleja 1 se observa una diferencia de +0.27 m entre distancia ejecutada y planificada, probablemente por giros en el lugar y pequeña deriva acumulada.
 - Los corredores del escenario complejo son estrechos. Si el margen de seguridad alrededor de los obstáculos es demasiado grande, el planificador puede cerrar algunos pasillos en el mapa y no encontrar ruta.
-- La capa reactiva puede activarse en pasos muy estrechos aunque no haya un obstáculo real en la ruta planificada, lo que provoca desvíos innecesarios.
+- La velocidad media es baja (≤ 0.015 m/s) porque el robot se detiene para alinearse antes de cada giro, lo que alarga el tiempo de recorrido, especialmente en la ruta compleja 1 (613 s).
 
 ### Posibles mejoras
 
-- Usar un sensor adicional (como un giróscopo) para estimar mejor el ángulo del robot y reducir el error acumulado.
-- Recalcular la ruta automáticamente si el robot se desvía demasiado.
-- Suavizar los giros entre puntos intermedios para que el robot no tenga que detenerse en cada esquina.
+- Habilitar `USE_GYRO = True` para reducir el error de orientación en giros y mejorar la odometría.
+- Implementar un seguidor de ruta tipo pure-pursuit o curvas de suavizado para evitar las paradas en cada waypoint.
+- Evaluar distintos valores de `WAYPOINT_TOLERANCE_M` y `HEADING_KP` para acortar el tiempo de recorrido sin sacrificar precisión.
 
 ## 11. Estructura del Repositorio
 
@@ -209,6 +238,11 @@ laboratorio_final/
 │   ├── proximity.py                 # lectura de sensores IR
 │   ├── wheel.py                     # control de ruedas
 │   └── csv_logger.py                # registro de datos
+├── Analisis/                        # análisis estadístico y gráficos
+│   ├── Analisis_Proyecto_Final.ipynb
+│   ├── metricas_resumen.csv
+│   ├── graficar_corridas.py
+│   └── grafico_*.png
 └── logs/                            # archivos generados al correr la simulación
 ```
 ## 12. Videos de rutas Simple y Compleja 

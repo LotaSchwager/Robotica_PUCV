@@ -3,7 +3,7 @@
 Genera graficos comparando la ruta planificada con la trayectoria ejecutada.
 
 Uso:
-    python3 graficar_corridas.py              # usa ../logs/ automaticamente
+    python3 graficar_corridas.py              # usa ../logs/ y fallback a ../Lab_Final
     python3 graficar_corridas.py <logs_dir>   # especifica carpeta de logs
 
 Los graficos se guardan en la misma carpeta donde esta este script (Analisis/).
@@ -20,6 +20,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 LOGS_DIR  = os.path.join(os.path.dirname(__file__), '..', 'logs')
+LAB_DIR   = os.path.join(os.path.dirname(__file__), '..', 'Lab_Final')
 OUT_DIR   = os.path.dirname(os.path.abspath(__file__))
 
 # Limites del mundo (min_x, max_x, min_y, max_y) segun escenario
@@ -100,7 +101,11 @@ def leer_mapa(map_path, mundo):
 # ---------------------------------------------------------------------------
 
 def buscar_pares(logs_dir):
-    """Busca pares (log, ruta) que comparten el mismo timestamp."""
+    """Busca pares (log, ruta) que comparten el mismo timestamp.
+
+    Si no encuentra pares en logs/, busca en Lab_Final/ los archivos de datos
+    consolidados (datos_kalman_*.csv, datos_ruta_*.csv, datos_mapa_*.txt).
+    """
     logs = sorted(glob.glob(os.path.join(logs_dir, 'final_kalman_*.csv')))
     pares = []
     for log in logs:
@@ -114,6 +119,40 @@ def buscar_pares(logs_dir):
                 'mapa': mapa if os.path.exists(mapa) else None,
                 'ts':   ts,
             })
+
+    # Fallback: archivos consolidados en Lab_Final/
+    if not pares and os.path.isdir(LAB_DIR):
+        fallback = [
+            {
+                'log':  'datos_kalman_ruta_simple.csv',
+                'ruta': 'datos_ruta_ruta_2_simple.csv',
+                'mapa': 'datos_mapa_ruta_1_simple.txt',
+                'ts':   'ruta_simple',
+            },
+            {
+                'log':  'datos_kalman_ruta_1_compleja.csv',
+                'ruta': 'datos_ruta_ruta_1_compleja.csv',
+                'mapa': 'datos_mapa_ruta_1_compleja.txt',
+                'ts':   'ruta_1_compleja',
+            },
+            {
+                'log':  'datos_kalman_ruta_2_compleja.csv',
+                'ruta': 'datos_ruta_ruta_2_compleja.csv',
+                'mapa': 'datos_mapa_ruta_2_compleja.txt',
+                'ts':   'ruta_2_compleja',
+            },
+        ]
+        for item in fallback:
+            log_path = os.path.join(LAB_DIR, item['log'])
+            ruta_path = os.path.join(LAB_DIR, item['ruta'])
+            mapa_path = os.path.join(LAB_DIR, item['mapa'])
+            if os.path.exists(log_path) and os.path.exists(ruta_path):
+                pares.append({
+                    'log':  log_path,
+                    'ruta': ruta_path,
+                    'mapa': mapa_path if os.path.exists(mapa_path) else None,
+                    'ts':   item['ts'],
+                })
     return pares
 
 
@@ -188,9 +227,11 @@ def graficar(par, out_dir):
         f'Tiempo total:      {duracion:.1f} s\n'
         f'Error posicion final: {error_pos:.3f} m'
     )
-    ax.text(0.02, 0.02, resumen, transform=ax.transAxes, fontsize=8,
-            verticalalignment='bottom',
-            bbox=dict(boxstyle='round', facecolor='white', alpha=0.85))
+    # Cuadro de métricas en esquina inferior derecha, fuera del área principal de la ruta
+    ax.text(0.98, 0.02, resumen, transform=ax.transAxes, fontsize=8,
+            verticalalignment='bottom', horizontalalignment='right',
+            bbox=dict(boxstyle='round', facecolor='white', alpha=0.85,
+                      edgecolor='gray', linewidth=0.8))
 
     nombre = f'grafico_{escenario.lower()}_{par["ts"]}.png'
     salida = os.path.join(out_dir, nombre)
