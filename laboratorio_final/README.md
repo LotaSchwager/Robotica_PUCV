@@ -211,3 +211,9 @@ laboratorio_final/
 │   └── csv_logger.py                # registro de datos
 └── logs/                            # archivos generados al correr la simulación
 ```
+## 12. Videos de rutas Simple y Compleja 
+** Ruta Compleja**
+https://drive.google.com/file/d/1gbLmn8-T5ZekhGfHdwwiTFYVOk-_Ie0I/view?usp=sharing
+
+** Ruta Simple**
+https://drive.google.com/file/d/1MbFThTrjMhqq_SHTbpCCpoYwOkAvJ_Ts/view?usp=sharing
