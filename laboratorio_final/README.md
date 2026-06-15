@@ -188,11 +188,6 @@ A continuación se muestran las rutas calculadas por A* (azul) y las trayectoria
 
 ![Ruta planificada vs trayectoria real - escenario complejo ruta 2](Analisis/grafico_complejo_ruta_2_compleja.png)
 
-### Videos demostrativos
-
-- **Ruta compleja:** https://drive.google.com/file/d/1gbLmn8-T5ZekhGfHdwwiTFYVOk-_Ie0I/view?usp=sharing
-- **Ruta simple:** https://drive.google.com/file/d/1MbFThTrjMhqq_SHTbpCCpoYwOkAvJ_Ts/view?usp=sharing
-
 ### Otros archivos de evidencia
 
 - El análisis estadístico completo, incluyendo comparativas entre escenarios, evolución temporal, sensores y odometría, está en `Analisis/Analisis_Proyecto_Final.ipynb`.
@@ -246,8 +241,5 @@ laboratorio_final/
 └── logs/                            # archivos generados al correr la simulación
 ```
 ## 12. Videos de rutas Simple y Compleja 
-** Ruta Compleja**
-https://drive.google.com/file/d/1gbLmn8-T5ZekhGfHdwwiTFYVOk-_Ie0I/view?usp=sharing
-
-** Ruta Simple**
-https://drive.google.com/file/d/1MbFThTrjMhqq_SHTbpCCpoYwOkAvJ_Ts/view?usp=sharing
+- **Ruta compleja:** https://drive.google.com/file/d/1gbLmn8-T5ZekhGfHdwwiTFYVOk-_Ie0I/view?usp=sharing
+- **Ruta simple:** https://drive.google.com/file/d/1MbFThTrjMhqq_SHTbpCCpoYwOkAvJ_Ts/view?usp=sharing
